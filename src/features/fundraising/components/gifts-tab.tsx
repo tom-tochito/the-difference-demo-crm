@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
+import { Download } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { downloadCsv } from "@/lib/csv";
 import {
   Table,
   TableBody,
@@ -67,11 +70,39 @@ export function GiftsTab({
       </div>
 
       <Card className="gap-3 py-4">
-        <CardHeader className="px-4">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 px-4">
           <CardTitle className="text-sm">
             Committed gifts — {data.currentYear} instalments · {data.gifts.length}{" "}
             records
           </CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              downloadCsv(
+                `committed-gifts-${data.currentYear.replace("/", "-")}.csv`,
+                [
+                  { header: "Funder", cell: (g) => g.name },
+                  { header: "Type", cell: (g) => g.fields.funderType },
+                  { header: "Budget category", cell: (g) => g.fields.budgetCategory },
+                  { header: "Committed (£)", cell: (g) => (g.amountMinor ?? 0) / 100 },
+                  {
+                    header: "Received (£)",
+                    cell: (g) =>
+                      typeof g.fields.received === "number"
+                        ? g.fields.received / 100
+                        : "",
+                  },
+                  { header: "Gift Aid", cell: (g) => g.fields.giftAid },
+                  { header: "New/Regrant", cell: (g) => g.fields.newOrRegrant },
+                  { header: "Status", cell: (g) => g.stage },
+                ],
+                data.gifts,
+              )
+            }
+          >
+            <Download className="size-3.5" /> Export CSV
+          </Button>
         </CardHeader>
         <CardContent className="overflow-x-auto px-4">
           <Table>

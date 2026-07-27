@@ -8,6 +8,13 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BadgePill } from "./badge-pill";
 import { formatRelative } from "@/lib/format";
 
@@ -19,10 +26,13 @@ const DOT: Record<string, string> = {
   system: "bg-zinc-300",
 };
 
+const KINDS = ["note", "call", "email", "meeting"] as const;
+
 export function ActivityLog({ recordId }: { recordId: Id<"records"> }) {
   const activities = useQuery(api.activities.listByRecord, { recordId });
   const log = useMutation(api.activities.log);
   const [draft, setDraft] = useState("");
+  const [kind, setKind] = useState<string>("note");
   const [now] = useState(() => Date.now());
 
   const visible = (activities ?? []).filter((a) => a.kind !== "journey");
@@ -30,7 +40,7 @@ export function ActivityLog({ recordId }: { recordId: Id<"records"> }) {
   const handleAdd = async () => {
     if (draft.trim() === "") return;
     try {
-      await log({ recordId, kind: "note", body: draft.trim() });
+      await log({ recordId, kind, body: draft.trim() });
       setDraft("");
     } catch {
       toast.error("Could not log activity.");
@@ -44,6 +54,21 @@ export function ActivityLog({ recordId }: { recordId: Id<"records"> }) {
       </CardHeader>
       <CardContent className="px-4">
         <div className="mb-3 flex gap-2">
+          <Select value={kind} onValueChange={setKind}>
+            <SelectTrigger size="sm" className="w-[104px] shrink-0 text-xs capitalize">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {KINDS.map((k) => (
+                <SelectItem key={k} value={k} className="capitalize">
+                  <span
+                    className={`size-2 rounded-full ${DOT[k] ?? "bg-zinc-300"}`}
+                  />
+                  {k}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

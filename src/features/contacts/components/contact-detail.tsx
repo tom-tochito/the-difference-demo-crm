@@ -30,6 +30,7 @@ export function ContactDetail({
   const record = useQuery(api.records.get, { id });
   const activities = useQuery(api.activities.listByRecord, { recordId: id });
   const remove = useMutation(api.records.remove);
+  const setFlags = useMutation(api.records.setFlags);
   const [editing, setEditing] = useState(false);
   const [now] = useState(() => Date.now());
 
@@ -89,11 +90,33 @@ export function ContactDetail({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {record.restricted && (
-              <span className="flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
-                <Lock className="size-3" /> Restricted
-              </span>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              title={record.flagged ? "Remove cross-team flag" : "Flag for cross-team check"}
+              className={record.flagged ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800" : ""}
+              onClick={() => {
+                void setFlags({ id, flagged: !record.flagged }).catch(() =>
+                  toast.error("Could not update flag."),
+                );
+              }}
+            >
+              <Flag className={record.flagged ? "size-3.5 fill-amber-500" : "size-3.5"} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              title={record.restricted ? "Remove restriction" : "Mark record as restricted"}
+              className={record.restricted ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800" : ""}
+              onClick={() => {
+                void setFlags({ id, restricted: !record.restricted }).catch(() =>
+                  toast.error("Could not update restriction."),
+                );
+              }}
+            >
+              <Lock className="size-3.5" />
+              {record.restricted ? "Restricted" : ""}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="size-3.5" /> Edit
             </Button>

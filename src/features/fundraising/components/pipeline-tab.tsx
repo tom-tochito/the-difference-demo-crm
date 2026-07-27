@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { Columns3, Rows3 } from "lucide-react";
+import { Columns3, Download, Rows3 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { TabSkeleton } from "./tab-skeleton";
 import { BadgePill } from "@/features/records/components/badge-pill";
 import { useEntityFields } from "@/features/records/hooks/use-entity-fields";
 import { formatGBP, formatGBPFull } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
 
 const RAG_DOT: Record<string, string> = {
   Green: "bg-emerald-500",
@@ -82,7 +83,7 @@ export function PipelineTab({
           <CardTitle className="text-sm">
             All pipeline prospects — 25/26
           </CardTitle>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             <Button
               size="sm"
               variant={view === "table" ? "default" : "outline"}
@@ -96,6 +97,29 @@ export function PipelineTab({
               onClick={() => setView("kanban")}
             >
               <Columns3 className="size-3.5" /> Kanban
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                downloadCsv(
+                  "pipeline-25-26.csv",
+                  [
+                    { header: "Funder / prospect", cell: (r) => r.name },
+                    { header: "Stage", cell: (r) => r.stage },
+                    { header: "Relationship", cell: (r) => r.status },
+                    { header: "Type", cell: (r) => r.fields.funderType },
+                    { header: "Ask (£)", cell: (r) => (r.amountMinor ?? 0) / 100 || "" },
+                    { header: "Likelihood %", cell: (r) => r.fields.likelihood },
+                    { header: "Lead", cell: (r) => r.fields.lead },
+                    { header: "RAG", cell: (r) => r.fields.rag },
+                    { header: "Programme", cell: (r) => r.fields.programme },
+                  ],
+                  rows,
+                )
+              }
+            >
+              <Download className="size-3.5" /> Export
             </Button>
           </div>
         </CardHeader>
