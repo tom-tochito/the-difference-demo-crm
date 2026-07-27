@@ -19,6 +19,8 @@ export const add = mutation({
     title: v.string(),
     recordId: v.optional(v.id("records")),
     dueAt: v.optional(v.number()),
+    team: v.optional(v.string()),
+    assigneeName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -31,8 +33,8 @@ export const add = mutation({
       title: args.title,
       recordId: args.recordId,
       recordName,
-      assigneeName: user.name ?? user.email,
-      team: user.team,
+      assigneeName: args.assigneeName ?? user.name ?? user.email,
+      team: args.team ?? user.team,
       dueAt: args.dueAt,
       done: false,
     });

@@ -8,10 +8,10 @@ import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/features/dashboard/components/stat-card";
+import { TaskFormDialog } from "@/features/dashboard/components/task-form-dialog";
 import { BadgePill } from "@/features/records/components/badge-pill";
 import { formatDate, formatGBP, formatRelative } from "@/lib/format";
 import { toast } from "sonner";
@@ -27,8 +27,7 @@ export default function DashboardPage() {
   const [now] = useState(() => Date.now());
   const data = useQuery(api.dashboard.overview, { now });
   const setDone = useMutation(api.tasks.setDone);
-  const [taskDraft, setTaskDraft] = useState("");
-  const addTask = useMutation(api.tasks.add);
+  const [addingTask, setAddingTask] = useState(false);
 
   const maxProgramme = useMemo(
     () =>
@@ -174,54 +173,70 @@ export default function DashboardPage() {
 
           <Card className="gap-3 py-4">
             <CardHeader className="flex-row items-center justify-between px-4">
-              <CardTitle className="text-sm">Open tasks</CardTitle>
-              <Badge variant="secondary">{data.openTasks.length} open</Badge>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                Open tasks
+                <Badge variant="secondary">{data.openTasks.length} open</Badge>
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAddingTask(true)}
+              >
+                <Plus className="size-3.5" /> Add task
+              </Button>
             </CardHeader>
             <CardContent className="px-4">
-              <div className="mb-3 flex gap-2">
-                <Input
-                  value={taskDraft}
-                  onChange={(e) => setTaskDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && taskDraft.trim() !== "") {
-                      void addTask({ title: taskDraft.trim() }).then(() =>
-                        setTaskDraft(""),
-                      );
-                    }
-                  }}
-                  placeholder="Add task…"
-                  className="h-8 text-sm"
-                />
-              </div>
+              {data.openTasks.length === 0 && (
+                <p className="text-sm text-zinc-500">
+                  All clear — no open tasks.
+                </p>
+              )}
               <ul className="space-y-2.5">
-                {data.openTasks.map((task) => (
-                  <li key={task._id} className="flex items-start gap-2.5 text-sm">
-                    <Checkbox
-                      className="mt-0.5"
-                      onCheckedChange={() => {
-                        void setDone({ id: task._id, done: true }).catch(() =>
-                          toast.error("Could not complete task."),
-                        );
-                      }}
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium leading-snug text-zinc-900">
-                        {task.title}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-500">
-                        {task.dueAt ? `Due ${formatDate(task.dueAt)} · ` : ""}
-                        {task.recordName ? `${task.recordName} · ` : ""}
-                        {task.assigneeName}
-                        {task.team && (
-                          <BadgePill value={task.team} className="ml-1.5" />
-                        )}
-                      </p>
-                    </div>
-                  </li>
-                ))}
+                {data.openTasks.map((task) => {
+                  const overdue = task.dueAt !== undefined && task.dueAt < now;
+                  return (
+                    <li
+                      key={task._id}
+                      className="flex items-start gap-2.5 text-sm"
+                    >
+                      <Checkbox
+                        className="mt-0.5"
+                        onCheckedChange={() => {
+                          void setDone({ id: task._id, done: true }).catch(() =>
+                            toast.error("Could not complete task."),
+                          );
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium leading-snug text-zinc-900">
+                          {task.title}
+                        </p>
+                        <p className="mt-0.5 text-xs text-zinc-500">
+                          {task.dueAt !== undefined && (
+                            <span
+                              className={
+                                overdue ? "font-semibold text-red-600" : ""
+                              }
+                            >
+                              {overdue ? "Overdue — " : "Due "}
+                              {formatDate(task.dueAt)}
+                              {" · "}
+                            </span>
+                          )}
+                          {task.recordName ? `${task.recordName} · ` : ""}
+                          {task.assigneeName}
+                          {task.team && (
+                            <BadgePill value={task.team} className="ml-1.5" />
+                          )}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </CardContent>
           </Card>
+          <TaskFormDialog open={addingTask} onOpenChange={setAddingTask} />
         </div>
       </div>
     </div>
