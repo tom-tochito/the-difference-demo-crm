@@ -216,7 +216,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </header>
 
-        <main className="flex min-h-dvh flex-1 flex-col pt-14 lg:ml-56 lg:pt-0">
+        <main className="flex min-h-dvh min-w-0 flex-1 flex-col pt-14 lg:ml-56 lg:pt-0">
           {children}
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
