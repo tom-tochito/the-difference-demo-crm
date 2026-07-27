@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { formatGBP } from "@/lib/format";
+import { IncomeChart } from "./income-chart";
 import { TabSkeleton } from "./tab-skeleton";
 
 export function FinancialOverviewTab() {
@@ -137,6 +138,13 @@ export function FinancialOverviewTab() {
           </p>
         </CardContent>
       </Card>
+
+      <IncomeChart
+        years={data.years}
+        committedTotals={data.committedTotals}
+        targets={data.targets}
+        currentYear={data.currentYear}
+      />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="gap-3 py-4">

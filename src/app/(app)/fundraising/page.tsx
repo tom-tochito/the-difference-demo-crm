@@ -14,6 +14,7 @@ import {
 import { DeadlinesTab } from "@/features/fundraising/components/deadlines-tab";
 import { FinancialOverviewTab } from "@/features/fundraising/components/financial-overview-tab";
 import { GiftsTab } from "@/features/fundraising/components/gifts-tab";
+import { PipelineAnalysisTab } from "@/features/fundraising/components/pipeline-analysis-tab";
 import { PipelineTab } from "@/features/fundraising/components/pipeline-tab";
 import { RecordEditorById } from "@/features/records/components/record-editor-by-id";
 import { RecordFormDialog } from "@/features/records/components/record-form-dialog";
@@ -22,15 +23,11 @@ const TABS = [
   { value: "overview", label: "Financial overview" },
   { value: "gifts", label: "Committed gifts" },
   { value: "pipeline", label: "Pipeline" },
+  { value: "analysis", label: "Pipeline analysis" },
   { value: "deadlines", label: "Deadlines" },
 ] as const;
 
-const STUB_TABS = [
-  "Termly targets",
-  "Meeting tracker",
-  "Pipeline analysis",
-  "Relationship tracker",
-];
+const STUB_TABS = ["Termly targets", "Meeting tracker", "Relationship tracker"];
 
 function FundraisingContent() {
   const router = useRouter();
@@ -90,6 +87,7 @@ function FundraisingContent() {
       {tab === "pipeline" && (
         <PipelineTab onSelectProspect={openEditor("Pipeline prospect")} />
       )}
+      {tab === "analysis" && <PipelineAnalysisTab />}
       {tab === "deadlines" && (
         <DeadlinesTab onSelectDeadline={openEditor("Deadline")} />
       )}
