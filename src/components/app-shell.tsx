@@ -18,6 +18,7 @@ import {
   Settings2,
   LogOut,
   Menu,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/format";
@@ -25,6 +26,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  CommandPalette,
+  useCommandPalette,
+} from "@/components/command-palette";
 
 const DISABLED_PORTALS = [
   { label: "Partnerships", icon: Workflow },
@@ -73,7 +78,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  onNavigate,
+  onSearch,
+}: {
+  onNavigate?: () => void;
+  onSearch?: () => void;
+}) {
   const user = useQuery(api.users.currentUser);
   const { signOut } = useAuthActions();
   const router = useRouter();
@@ -87,6 +98,20 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <p className="text-xl font-bold text-white">CRM</p>
         <p className="text-[11px] text-zinc-500">Demo · Convex</p>
       </div>
+      {onSearch && (
+        <div className="px-3 pt-3">
+          <button
+            onClick={onSearch}
+            className="flex w-full items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-[13px] text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-300"
+          >
+            <Search className="size-3.5" />
+            Search…
+            <kbd className="ml-auto rounded border border-white/10 px-1 font-mono text-[10px]">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
+      )}
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
         <SectionLabel>Overview</SectionLabel>
         <NavLink href="/dashboard" label="Dashboard" icon={LayoutGrid} onNavigate={onNavigate} />
@@ -150,13 +175,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
 
   return (
     <TooltipProvider>
       <div className="flex min-h-dvh flex-1 bg-zinc-100">
         {/* Desktop sidebar */}
         <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 lg:block">
-          <SidebarContent />
+          <SidebarContent onSearch={() => setPaletteOpen(true)} />
         </aside>
 
         {/* Mobile top bar + drawer */}
@@ -181,11 +207,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </p>
             <p className="text-sm font-bold">CRM</p>
           </div>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="ml-auto rounded-md p-2 text-zinc-300 transition-colors hover:bg-white/10"
+            aria-label="Search"
+          >
+            <Search className="size-5" />
+          </button>
         </header>
 
         <main className="flex min-h-dvh flex-1 flex-col pt-14 lg:ml-56 lg:pt-0">
           {children}
         </main>
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
     </TooltipProvider>
   );
