@@ -2,7 +2,7 @@
 
 A charity CRM demo built with **Next.js 16**, **Convex**, and **Convex Auth**, recreating the core screens of a design prototype. Its defining feature is a **CMS-style flexible schema**: every entity's fields are defined in the database by an admin, and forms, list columns, badges, detail panels, and search adapt instantly for every user.
 
-**Live demo:** https://the-difference-demo-crm.vercel.app
+**Live demo:** https://the-difference-demo-crm.tochito.co.uk
 
 | Demo account | Email | Password |
 | --- | --- | --- |
@@ -114,6 +114,15 @@ Requires the env vars `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` (created 
 
 ## Deployment
 
-Deployed on Vercel with a single env var, `NEXT_PUBLIC_CONVEX_URL`, pointing at the Convex deployment. Pushes to `main` auto-deploy. The demo intentionally runs against a **dev** Convex deployment; reset the data anytime with the seed command above.
+Cloudflare Workers Builds deploys `main` to the production Worker and every other branch to a branch preview version.
+
+- Worker: `the-difference-demo-crm`
+- Production: <https://the-difference-demo-crm.tochito.co.uk>
+- Workers.dev: <https://the-difference-demo-crm.tom-b75.workers.dev>
+- Hosted build: `pnpm run build:hosted`
+- Production deploy: `pnpm exec wrangler deploy`
+- Preview upload: `pnpm run upload:preview`
+
+Production and preview use separate Convex deployments. Keep each deployment-scoped `CONVEX_DEPLOY_KEY` only in its matching Cloudflare build trigger and keep `NEXT_PUBLIC_CONVEX_URL` aligned with that deployment. The deploy key is never a Worker runtime secret. Reset demo data only in the intended backend with the seed command above.
 
 > ⚠️ This is a demo: credentials are public and anyone with the URL can edit the data.

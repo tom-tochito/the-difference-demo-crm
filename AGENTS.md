@@ -17,3 +17,12 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+## Deployment
+
+- Cloudflare Workers is the production runtime and `wrangler.jsonc` is the authoritative deployment configuration.
+- `main` deploys the production Convex backend before the production Worker. Non-`main` branches deploy the shared development Convex backend before uploading preview versions.
+- Keep deployment-scoped `CONVEX_DEPLOY_KEY` values only in their matching Cloudflare build triggers; never add them as Worker runtime secrets.
+- Keep `NEXT_PUBLIC_CONVEX_URL` aligned with the deployment selected by the build key.
+- Preserve the `the-difference-demo-crm.tochito.co.uk` production route.
+- Run lint, the Next.js build, the OpenNext build, and a Wrangler dry run before deployment.
