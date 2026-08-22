@@ -1,6 +1,13 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import process from "node:process";
 import { URL } from "node:url";
+
+const branch = process.env.WORKERS_CI_BRANCH;
+const siteUrl = branch && branch !== "main"
+  ? previewOrigin(branch, "the-difference-demo-crm")
+  : requireOrigin("SITE_URL", process.env.SITE_URL);
+process.env.SITE_URL = siteUrl;
 
 const publicUrl = requireConvexUrl(
   "NEXT_PUBLIC_CONVEX_URL",
@@ -8,23 +15,21 @@ const publicUrl = requireConvexUrl(
   ".convex.cloud",
 );
 
-if (process.env.CONVEX_DEPLOY_KEY) {
-  assertDeployKeyMatchesUrl(process.env.CONVEX_DEPLOY_KEY, publicUrl);
-  runConvexDryRun();
-  run("pnpm", [
-    "exec",
-    "convex",
-    "deploy",
-    "--typecheck",
-    "try",
-    "--codegen",
-    "enable",
-  ]);
-} else {
-  process.stdout.write(
-    "CONVEX_DEPLOY_KEY is not available; building the Worker without deploying Convex.\n",
-  );
+if (!process.env.CONVEX_DEPLOY_KEY) {
+  throw new Error("CONVEX_DEPLOY_KEY is required for every hosted build.");
 }
+assertDeployKeyMatchesUrl(process.env.CONVEX_DEPLOY_KEY, publicUrl);
+run("pnpm", ["exec", "convex", "env", "set", "SITE_URL", siteUrl]);
+runConvexDryRun();
+run("pnpm", [
+  "exec",
+  "convex",
+  "deploy",
+  "--typecheck",
+  "try",
+  "--codegen",
+  "enable",
+]);
 
 run("pnpm", ["run", "build:worker"]);
 
@@ -49,6 +54,22 @@ function requireConvexUrl(name, value, suffix) {
   }
 
   return url;
+}
+
+function requireOrigin(name, value) {
+  if (!value) throw new Error(`${name} is required for production builds.`);
+  const url = new URL(value);
+  if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    throw new Error(`${name} must be an exact HTTPS origin.`);
+  }
+  return url.origin;
+}
+
+function previewOrigin(previewBranch, workerName) {
+  const normalized = previewBranch.normalize("NFKD").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "preview";
+  const maxAliasLength = 63 - workerName.length - 1;
+  const alias = normalized.length <= maxAliasLength ? normalized : `${normalized.slice(0, maxAliasLength - 9).replace(/-$/, "")}-${createHash("sha256").update(previewBranch).digest("hex").slice(0, 8)}`;
+  return `https://${alias}-${workerName}.tom-b75.workers.dev`;
 }
 
 function assertDeployKeyMatchesUrl(deployKey, url) {
