@@ -20,6 +20,9 @@ import type * as lib_records from "../lib/records.js";
 import type * as records from "../records.js";
 import type * as seed from "../seed.js";
 import type * as seedData from "../seedData.js";
+import type * as shipping from "../shipping.js";
+import type * as shippingModel from "../shippingModel.js";
+import type * as shippingSeed from "../shippingSeed.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -42,6 +45,9 @@ declare const fullApi: ApiFromModules<{
   records: typeof records;
   seed: typeof seed;
   seedData: typeof seedData;
+  shipping: typeof shipping;
+  shippingModel: typeof shippingModel;
+  shippingSeed: typeof shippingSeed;
   tasks: typeof tasks;
   users: typeof users;
 }>;

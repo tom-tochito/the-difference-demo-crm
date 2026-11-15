@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { ShieldCheck, User, Loader2 } from "lucide-react";
@@ -29,6 +30,10 @@ const DEMO_ACCOUNTS = [
 export default function LoginPage() {
   const { signIn } = useAuthActions();
   const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
+  useEffect(() => {
+    if (isAuthenticated) router.replace("/workspaces");
+  }, [isAuthenticated, router]);
   const [pending, setPending] = useState<string | null>(null);
 
   const handleSignIn = async (email: string, key: string) => {
@@ -39,7 +44,7 @@ export default function LoginPage() {
         password: DEMO_PASSWORD,
         flow: "signIn",
       });
-      router.push("/dashboard");
+      // Navigate only after Convex confirms the token on the reactive connection.
     } catch {
       toast.error("Sign-in failed. Has the demo data been seeded?");
       setPending(null);
@@ -69,11 +74,13 @@ export default function LoginPage() {
       <div className="rise-children relative w-full max-w-sm">
         <div className="mb-8 text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-zinc-400">
-            The Difference
+            Connected workspaces
           </p>
-          <h1 className="mt-1 text-3xl font-bold text-white">CRM</h1>
+          <h1 className="mt-1 text-3xl font-bold text-white">
+            Your operations, connected
+          </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Demo · Convex + flexible schemas
+            Charity CRM · Freight Operations
           </p>
         </div>
         <div className="space-y-3">
@@ -98,9 +105,11 @@ export default function LoginPage() {
             </Button>
           ))}
         </div>
-        <p className="mt-6 text-center text-xs text-zinc-500">
+        <p className="mt-6 text-center text-xs text-zinc-400">
           One-click demo accounts · password{" "}
-          <code className="rounded bg-white/10 px-1 py-0.5">{DEMO_PASSWORD}</code>
+          <code className="rounded bg-white/10 px-1 py-0.5">
+            {DEMO_PASSWORD}
+          </code>
         </p>
       </div>
     </div>

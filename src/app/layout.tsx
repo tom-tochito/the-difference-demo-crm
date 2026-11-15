@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Difference — CRM Demo",
-  description: "Convex-powered CRM demo with flexible, admin-editable schemas",
+  title: "Connected Workspaces — CRM & Freight",
+  description: "The Difference charity CRM and Freight Operations shipping demo",
 };
 
 export default function RootLayout({

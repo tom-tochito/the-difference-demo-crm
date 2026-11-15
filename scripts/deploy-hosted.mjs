@@ -4,6 +4,8 @@ import process from "node:process";
 import { URL } from "node:url";
 
 const branch = process.env.WORKERS_CI_BRANCH;
+process.env.NEXT_PUBLIC_BUILD_COMMIT = process.env.WORKERS_CI_COMMIT_SHA ?? "local";
+process.env.NEXT_PUBLIC_BUILD_ID = process.env.WORKERS_CI_BUILD_UUID ?? "local";
 const siteUrl = branch && branch !== "main"
   ? previewOrigin(branch, "the-difference-demo-crm")
   : requireOrigin("SITE_URL", process.env.SITE_URL);
@@ -31,6 +33,7 @@ run("pnpm", [
   "enable",
 ]);
 
+run("pnpm", ["exec", "convex", "run", "shippingSeed:initialize"]);
 run("pnpm", ["run", "build:worker"]);
 
 function requireConvexUrl(name, value, suffix) {

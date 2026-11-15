@@ -13,7 +13,9 @@
     "upload:preview": "node scripts/upload-preview.mjs the-difference-demo-crm",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@auth/core": "0.37.0",
@@ -21,7 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "convex": "^1.42.3",
+    "convex": "^1.43.0",
     "lucide-react": "^1.27.0",
     "next": "16.2.12",
     "next-themes": "^0.4.6",
@@ -36,16 +38,20 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260821.1",
+    "@edge-runtime/vm": "^5.0.0",
     "@opennextjs/cloudflare": "1.20.2",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "convex-test": "^0.0.71",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
     "wrangler": "4.125.0"
   }
 }
