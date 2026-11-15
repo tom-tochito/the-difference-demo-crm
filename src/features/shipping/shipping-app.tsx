@@ -54,19 +54,12 @@ import {
 } from "./details";
 import { RevenueChart, VolumeChart } from "./charts";
 import { ClientWorkspace } from "./client-workspace";
-import {
-  SavingsStudio,
-  Sources,
-  Team,
-  DemoGuide,
-  ClientPreview,
-  CommercialHero,
-} from "./intelligence";
+import { Sources, Team, ClientPreview } from "./intelligence";
 
 const titles: Record<string, [string, string]> = {
   overview: [
-    "A clearer view of every opportunity.",
-    "Freight intelligence, client relationships and operational control in one place.",
+    "Your freight, all in one place.",
+    "Manage every request, shipment and handover from one connected workspace.",
   ],
   customers: [
     "Customers & partners",
@@ -113,18 +106,14 @@ const titles: Record<string, [string, string]> = {
 export function ShippingApp({ section }: { section: string }) {
   const now = useClock();
   const user = useQuery(api.users.currentUser);
-  const extra = ["savings", "sources", "team", "guide", "portal"].includes(
-    section,
-  );
+  const extra = ["sources", "team", "portal"].includes(section);
   const data = useQuery(
     api.shipping.overview,
     user?.role === "superadmin" && !extra ? { now } : "skip",
   );
   if (!user) return <div className="p-10">Opening workspace…</div>;
-  if (section === "savings") return <SavingsStudio />;
   if (section === "sources") return <Sources />;
   if (section === "team") return <Team />;
-  if (section === "guide") return <DemoGuide />;
   if (user.role !== "superadmin") return <ClientWorkspace section={section} />;
   if (section === "portal") return <ClientPreview />;
   if (!data)
@@ -240,7 +229,6 @@ function Workspace({ section }: { section: string }) {
   else if (section === "overview")
     content = (
       <div className="space-y-6">
-        <CommercialHero />
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
           {[
             {

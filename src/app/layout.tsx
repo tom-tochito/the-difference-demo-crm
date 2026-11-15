@@ -15,8 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Freight Operations — Intelligent Freight",
-  description: "Importer savings, connected freight operations and isolated client workspaces.",
+  title: "Freight Operations — Your freight, all in one place",
+  description:
+    "Your freight, all in one place. Requests, shipments, documents and invoices in one connected workspace.",
 };
 
 export default function RootLayout({

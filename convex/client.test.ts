@@ -3,7 +3,6 @@ import { convexTest } from "convex-test";
 import { test, expect } from "vitest";
 import schema from "./schema";
 import { api, internal } from "./_generated/api";
-import { comparison, currentPrice } from "./savings";
 const modules = import.meta.glob("./**/*.ts");
 async function setup() {
   const t = convexTest(schema, modules);
@@ -108,25 +107,52 @@ test("clients cannot change operational milestones, issue invoices, reset data, 
     }),
   ).rejects.toThrow("Access denied");
 });
-test("savings snapshots are idempotent and immutable through source refresh and quote conversion", async () => {
-  const { t, admin, user, other, superadmin } = await setup();
-  const d = await user.query(api.savings.overview, {});
-  const s = d.scenarios.find((s) => s.key === "SAVE-CONSOLIDATE")!;
-  expect(s.options[0].savingMinor).toBe(180000);
-  expect(s.options[0]).not.toHaveProperty("supplierMinor");
-  const args = { scenarioId: s.id, optionIndex: 0, sourceRevision: 1 };
-  const [id, id2] = await Promise.all([
-    user.mutation(api.savings.requestQuote, args),
-    user.mutation(api.savings.requestQuote, args),
-  ]);
-  expect(id).toBe(id2);
-  await expect(other.mutation(api.savings.requestQuote, args)).rejects.toThrow(
-    "Access denied",
-  );
+test("client requests stay assigned, require admin approval and convert idempotently", async () => {
+  const { t, ids, admin, user, other, superadmin } = await setup();
+  const id = await user.mutation(api.client.submitEnquiry, {
+    origin: "Ningbo",
+    destination: "Felixstowe",
+    cargo: "Fictional components",
+    mode: "sea",
+    weightKg: 1200,
+    volumeM3: 8,
+    packages: 8,
+    etd: Date.now() + 86400000,
+    eta: Date.now() + 35 * 86400000,
+    currency: "GBP",
+  });
+  expect(
+    (await user.query(api.client.snapshot, {})).enquiries.some(
+      (e) => e._id === id,
+    ),
+  ).toBe(true);
+  expect(
+    (await other.query(api.client.snapshot, {})).enquiries.some(
+      (e) => e._id === id,
+    ),
+  ).toBe(false);
   const q = await superadmin.mutation(api.shipping.quoteEnquiry, { id });
   await expect(
     admin.mutation(api.client.acceptQuote, { id: q }),
   ).rejects.toThrow("not been issued");
+  await expect(
+    superadmin.mutation(api.shipping.setQuoteStage, {
+      id: q,
+      stage: "Quote Sent",
+    }),
+  ).rejects.toThrow("Total must be");
+  await t.run((ctx) =>
+    ctx.db.patch("shippingQuotes", q, {
+      charges: [
+        {
+          description: "Ocean freight",
+          quantity: 1,
+          unitMinor: 420000,
+          costMinor: 350000,
+        },
+      ],
+    }),
+  );
   await superadmin.mutation(api.shipping.setQuoteStage, {
     id: q,
     stage: "Quote Sent",
@@ -134,47 +160,77 @@ test("savings snapshots are idempotent and immutable through source refresh and 
   await expect(
     user.mutation(api.client.acceptQuote, { id: q }),
   ).rejects.toThrow("admin approval");
+  await expect(
+    other.mutation(api.client.acceptQuote, { id: q }),
+  ).rejects.toThrow("Access denied");
   const [b, b2] = await Promise.all([
     admin.mutation(api.client.acceptQuote, { id: q }),
     admin.mutation(api.client.acceptQuote, { id: q }),
   ]);
   expect(b).toBe(b2);
-  const sources = await superadmin.query(api.savings.sources, {});
-  const rate = sources.find((s) => s.key === "rates")!;
-  await superadmin.mutation(api.savings.refresh, {
-    id: rate._id,
-    expectedRevision: 1,
+  await superadmin.mutation(api.shipping.confirmBooking, { id: b });
+  const shipment = await superadmin.mutation(api.shipping.planShipment, {
+    id: b,
   });
-  await superadmin.mutation(api.savings.refresh, {
-    id: rate._id,
-    expectedRevision: 1,
+  const invoice = await superadmin.mutation(api.shipping.createInvoice, {
+    shipmentId: shipment,
   });
-  await expect(user.mutation(api.savings.requestQuote, args)).rejects.toThrow(
-    "changed or expired",
+  const draft = await user.query(api.client.snapshot, {});
+  expect(draft.invoices.some((i) => i._id === invoice)).toBe(false);
+  await superadmin.mutation(api.shipping.issueInvoice, { id: invoice });
+  const visible = await user.query(api.client.snapshot, {});
+  expect(visible.shipments.find((s) => s._id === shipment)?.bookingId).toBe(b);
+  expect(visible.bookings.find((booking) => booking._id === b)?.quoteId).toBe(
+    q,
   );
-  const snapshot = await t.run((ctx) =>
-    ctx.db.query("shippingComparisons").first(),
+  expect(visible.invoices.find((i) => i._id === invoice)?.shipmentId).toBe(
+    shipment,
   );
-  expect(snapshot?.priceMinor).toBe(420000);
-  expect(snapshot?.sourceRevision).toBe(1);
-  const booking = await t.run((ctx) => ctx.db.get("shippingBookings", b));
+  const preview = await superadmin.query(api.client.snapshot, {
+    customerId: ids.a,
+  });
+  expect(preview.shipments.some((s) => s._id === shipment)).toBe(true);
+  expect(JSON.stringify(preview)).not.toMatch(
+    /costMinor|supplierMinor|marginMinor|operator|storageId/,
+  );
   expect(
-    booking?.charges.reduce((n, c) => n + c.unitMinor * c.quantity, 0),
-  ).toBe(420000);
-});
-test("comparison arithmetic is currency-local, includes fees once and reports negative savings", () => {
-  expect(
-    currentPrice(
-      { freightMinor: 330000, handlingMinor: 65000, feeMinor: 25000 },
-      1,
+    (await other.query(api.client.snapshot, {})).invoices.some(
+      (i) => i._id === invoice,
     ),
-  ).toBe(420000);
-  expect(comparison(600000, 420000)).toEqual({
-    savingMinor: 180000,
-    percent: 30,
-  });
-  expect(comparison(100, 125)).toEqual({ savingMinor: -25, percent: -25 });
-  expect(() => comparison(0, 100)).toThrow("Invalid");
+  ).toBe(false);
+  expect(
+    (await t.run((ctx) => ctx.db.get("shippingBookings", b)))?.customerId,
+  ).toBe(ids.a);
+});
+
+test("source refresh is superadmin-only and idempotent without changing operational records", async () => {
+  const { t, user, admin, superadmin } = await setup();
+  const sources = await user.query(api.dataSources.sources, {});
+  expect(sources).toHaveLength(5);
+  const before = await t.run((ctx) =>
+    ctx.db.query("shippingBookings").collect(),
+  );
+  const args = { id: sources[0]._id, expectedRevision: sources[0].revision };
+  await expect(admin.mutation(api.dataSources.refresh, args)).rejects.toThrow(
+    "Superadmin",
+  );
+  await expect(user.mutation(api.dataSources.refresh, args)).rejects.toThrow(
+    "Superadmin",
+  );
+  const results = await Promise.all([
+    superadmin.mutation(api.dataSources.refresh, args),
+    superadmin.mutation(api.dataSources.refresh, args),
+  ]);
+  expect(results).toEqual([
+    args.expectedRevision + 1,
+    args.expectedRevision + 1,
+  ]);
+  expect(
+    await t.run((ctx) => ctx.db.query("shippingBookings").collect()),
+  ).toEqual(before);
+  expect(
+    await t.run((ctx) => ctx.db.query("shippingSourceEvents").collect()),
+  ).toHaveLength(1);
 });
 test("assignment changes and disabled accounts immediately affect access", async () => {
   const { ids, user, admin, other } = await setup();
@@ -270,13 +326,12 @@ test("reset preserves user identities, rebinds companies and restores isolated d
   expect((await user.query(api.client.snapshot, {})).company.name).toBe(
     "Alder & Finch Exports",
   );
-  expect((await user.query(api.savings.overview, {})).scenarios).toHaveLength(
-    2,
-  );
+  expect(await user.query(api.dataSources.sources, {})).toHaveLength(5);
   await t.mutation(internal.platform.features, {});
-  expect((await user.query(api.savings.overview, {})).scenarios).toHaveLength(
-    2,
-  );
+  expect(await user.query(api.dataSources.sources, {})).toHaveLength(5);
+  expect(
+    await t.run((ctx) => ctx.db.query("shippingScenarios").collect()),
+  ).toHaveLength(0);
 });
 
 test("ordinary feature initialization preserves deliberately removed assignments", async () => {

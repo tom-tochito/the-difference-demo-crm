@@ -11,12 +11,12 @@
 import type * as auth from "../auth.js";
 import type * as client from "../client.js";
 import type * as clientAccess from "../clientAccess.js";
+import type * as dataSources from "../dataSources.js";
 import type * as demoAccounts from "../demoAccounts.js";
 import type * as demoFixtures from "../demoFixtures.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as platform from "../platform.js";
-import type * as savings from "../savings.js";
 import type * as shipping from "../shipping.js";
 import type * as shippingModel from "../shippingModel.js";
 import type * as shippingSeed from "../shippingSeed.js";
@@ -32,12 +32,12 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   client: typeof client;
   clientAccess: typeof clientAccess;
+  dataSources: typeof dataSources;
   demoAccounts: typeof demoAccounts;
   demoFixtures: typeof demoFixtures;
   http: typeof http;
   "lib/auth": typeof lib_auth;
   platform: typeof platform;
-  savings: typeof savings;
   shipping: typeof shipping;
   shippingModel: typeof shippingModel;
   shippingSeed: typeof shippingSeed;

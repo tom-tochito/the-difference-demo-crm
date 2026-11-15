@@ -1,22 +1,11 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowUpRight,
-  ArrowRight,
-  Database,
-  RefreshCw,
-  ShieldCheck,
-  Check,
-  Layers,
-  Activity,
-  BookOpen,
-} from "lucide-react";
+import { Database, RefreshCw, Check, Layers, Activity } from "lucide-react";
 import { toast } from "sonner";
 import {
   useClock,
@@ -24,12 +13,11 @@ import {
   Badge,
   Panel,
   Empty,
-  money,
   date,
-  Mode,
   Select,
   inputClass,
 } from "./shared";
+import { clientHref } from "./navigation";
 import { ClientWorkspace } from "./client-workspace";
 export function PageHeading({
   label,
@@ -50,232 +38,18 @@ export function PageHeading({
     </div>
   );
 }
-export function SavingsStudio() {
+export function Sources({ readOnly = false }: { readOnly?: boolean }) {
   const now = useClock();
-  const data = useQuery(api.savings.overview);
-  const request = useMutation(api.savings.requestQuote);
-  const router = useRouter();
-  const [selected, setSelected] = useState("");
-  if (!data) return <Loading />;
-  const s = data.scenarios.find((s) => s.id === selected) ?? data.scenarios[0];
-  if (!s)
-    return (
-      <div className="p-10">
-        <Empty>No comparisons are configured for this client yet.</Empty>
-      </div>
-    );
-  const best = Math.max(...s.options.map((o) => o.savingMinor));
-  return (
-    <div className="workspace-page">
-      <PageHeading
-        label="Savings studio"
-        title="Better choices. Visible value."
-        description="Explore the trade-offs behind your next shipment. Every comparison includes the platform fee, a clear baseline and the source assumptions."
-      />
-      <div className="grid gap-3 md:grid-cols-3">
-        {data.scenarios.map((row, i) => (
-          <button
-            onClick={() => setSelected(row.id)}
-            key={row.id}
-            className={`rounded-xl border p-5 text-left transition-colors ${s.id === row.id ? "border-teal-600 bg-teal-50/60 ring-1 ring-teal-600" : "border-slate-200 bg-white hover:border-slate-400"}`}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-teal-800">
-              Opportunity 0{i + 1} · {row.currency}
-            </p>
-            <p className="mt-3 text-sm font-semibold leading-6">{row.title}</p>
-            <p className="mt-3 text-[11px] text-slate-600">
-              {row.origin} → {row.destination}
-            </p>
-          </button>
-        ))}
-      </div>
-      <div className="value-banner grid gap-8 md:grid-cols-[1fr_auto]">
-        <div>
-          <p className="eyebrow !text-teal-200">
-            Illustrative opportunity · {s.key}
-          </p>
-          <h2 className="mt-3 max-w-lg text-3xl font-medium leading-tight tracking-tight">
-            {s.title}
-          </h2>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">
-            {s.description}
-          </p>
-          <p className="mt-5 text-xs text-slate-400">{s.cargo}</p>
-        </div>
-        <div className="md:border-l md:border-white/15 md:pl-8">
-          <p className="text-xs text-slate-300">
-            Potential saving from best option
-          </p>
-          <p className="mt-4 text-5xl font-medium tracking-tight text-teal-100">
-            {money(best, s.currency)}
-          </p>
-          <p className="mt-4 text-xs text-slate-400">
-            Against {money(s.baselineMinor, s.currency)} baseline
-          </p>
-          <p className="mt-2 text-[10px] text-slate-400">
-            Estimated, not guaranteed · No FX conversion
-          </p>
-        </div>
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[250px_1fr]">
-        <Panel title="Your baseline">
-          <div className="space-y-4">
-            {s.baseline.map((l) => (
-              <div key={l.label} className="text-xs">
-                <p className="text-slate-600">{l.label}</p>
-                <p className="mt-1 text-base font-medium">
-                  {money(l.amountMinor, s.currency)}
-                </p>
-              </div>
-            ))}
-            <div className="border-t pt-4 text-xs leading-6 text-slate-600">
-              Comparable logistics costs only. Goods value, duties, taxes and
-              insurance are excluded from both sides. Savings options are
-              alternatives and must not be added together.
-            </div>
-          </div>
-        </Panel>
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-          {s.options.map((o, index) => (
-            <div
-              key={o.label}
-              className="flex flex-col rounded-xl border border-slate-200 bg-white p-5"
-            >
-              <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
-                <Mode mode={o.mode} />
-                <span>{o.days} days</span>
-              </div>
-              <h3 className="mt-5 text-base font-semibold">{o.label}</h3>
-              <p className="mt-4 text-3xl font-medium tracking-tight">
-                {money(o.priceMinor, s.currency)}
-              </p>
-              <p
-                className={`mt-2 text-xs font-medium ${o.savingMinor >= 0 ? "text-teal-700" : "text-amber-800"}`}
-              >
-                {o.savingMinor >= 0
-                  ? `${o.percent}% lower · ${money(o.savingMinor, s.currency)} estimated saving`
-                  : `${money(-o.savingMinor, s.currency)} above baseline`}
-              </p>
-              <div className="my-6 space-y-3 border-y py-4 text-xs text-slate-600">
-                {[
-                  ["Freight", o.freightMinor],
-                  ["Handling & documents", o.handlingMinor],
-                  ["Platform service fee", o.feeMinor],
-                ].map(([label, n]) => (
-                  <div
-                    key={String(label)}
-                    className="flex justify-between gap-3"
-                  >
-                    <span>{label}</span>
-                    <span className="text-slate-800">
-                      {money(Number(n), s.currency)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {data.role === "superadmin" && (
-                <div className="mb-5 rounded-lg bg-slate-50 p-3 text-xs">
-                  <p className="mb-2 text-[9px] uppercase tracking-widest text-slate-600">
-                    Internal economics
-                  </p>
-                  <div className="flex justify-between">
-                    <span>Supplier costs</span>
-                    <span>{money(o.supplierMinor ?? 0, s.currency)}</span>
-                  </div>
-                  <div className="mt-2 flex justify-between font-semibold text-teal-800">
-                    <span>Est. gross margin</span>
-                    <span>{money(o.marginMinor ?? 0, s.currency)}</span>
-                  </div>
-                  <p className="mt-2 text-[10px] leading-5 text-slate-600">
-                    Selling price less supplier costs. Platform fee already
-                    included.
-                  </p>
-                </div>
-              )}
-              <div className="mt-auto">
-                <Action
-                  disabled={s.source.validUntil < now}
-                  onClick={async () => {
-                    const id = await request({
-                      scenarioId: s.id,
-                      optionIndex: index,
-                      sourceRevision: s.source.revision,
-                    });
-                    router.push(`/shipping/enquiries?id=${id}`);
-                  }}
-                >
-                  Request this option <ArrowUpRight className="size-3" />
-                </Action>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <Panel
-        title="Where these numbers come from"
-        action={
-          <Badge>
-            {s.source.validUntil < now ? "Expired" : "Sample data"}
-          </Badge>
-        }
-      >
-        <div className="flex flex-wrap justify-between gap-4 text-xs leading-6 text-slate-600">
-          <p>
-            {s.source.name} · Revision {s.source.revision}
-            <br />
-            Observed {date(s.source.observedAt)} · Valid until{" "}
-            {date(s.source.validUntil)}
-          </p>
-          <p className="max-w-md">
-            Synthetic rates illustrate how aggregation could improve decisions.
-            A quotation request stores these assumptions; source refreshes never
-            change accepted pricing.
-          </p>
-          <Link href="/shipping/sources" className="font-medium text-teal-800">
-            Explore data sources →
-          </Link>
-        </div>
-      </Panel>
-      {data.comparisons.length > 0 && (
-        <Panel title="Your saved quotation requests">
-          <div className="divide-y">
-            {data.comparisons
-              .slice(-8)
-              .reverse()
-              .map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/shipping/enquiries?id=${c.enquiryId}`}
-                  className="flex flex-wrap justify-between gap-2 py-3 text-xs"
-                >
-                  <span>
-                    Requested {date(c.createdAt)} · Source revision{" "}
-                    {c.sourceRevision}
-                  </span>
-                  <span>
-                    {money(c.priceMinor, c.currency)} ·{" "}
-                    {money(c.savingMinor, c.currency)} estimated saving →
-                  </span>
-                </Link>
-              ))}
-          </div>
-        </Panel>
-      )}
-    </div>
-  );
-}
-export function Sources() {
-  const now = useClock();
-  const rows = useQuery(api.savings.sources),
+  const rows = useQuery(api.dataSources.sources),
     user = useQuery(api.users.currentUser);
-  const refresh = useMutation(api.savings.refresh);
+  const refresh = useMutation(api.dataSources.refresh);
   if (!rows) return <Loading />;
   return (
     <div className="workspace-page">
       <PageHeading
-        label="Data intelligence"
-        title="A connected view of a fragmented market."
-        description="The opportunity: bring rates, schedules and operational signals into one decision. These interactive sources use fictional fixtures; no external provider is connected."
+        label="Future integrations · Simulated data"
+        title="Connected information. One place to work."
+        description="A preview of how supplier schedules, tracking and rates could connect to your freight service. All sources below are simulated; no external provider is connected."
       />
       <div className="grid gap-4 sm:grid-cols-3">
         {[
@@ -323,7 +97,7 @@ export function Sources() {
                   <p className="mt-2 text-teal-800">{s.events[0].message}</p>
                 )}
               </div>
-              {user?.role === "superadmin" ? (
+              {user?.role === "superadmin" && !readOnly ? (
                 <Action
                   onClick={() =>
                     refresh({ id: s._id, expectedRevision: s.revision })
@@ -346,15 +120,10 @@ export function Sources() {
           Real connections would require supplier agreements, API access,
           licensing, currency and surcharge normalisation, quality checks and
           monitoring. Data freshness and service constraints must stay visible.
-          The demo refresh changes deterministic sample observations and
-          reprices open comparisons; it does not contact carriers.
+          The demo refresh changes deterministic sample observations and updates
+          source timestamps; it does not contact carriers or change shipment
+          pricing.
         </p>
-        <Link
-          className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-teal-800"
-          href="/shipping/guide"
-        >
-          See the implementation roadmap <ArrowRight className="size-4" />
-        </Link>
       </Panel>
     </div>
   );
@@ -392,7 +161,7 @@ function TeamControls() {
       <PageHeading
         label="Team & access"
         title="The right work. The right people."
-        description="Client boundaries are enforced by the backend. Assign linked jobs to users and keep financial approval with client admins."
+        description="Give each teammate access to the jobs they manage. Client admins handle quotation approval and team assignments."
       />
       {data.role === "superadmin" && (
         <Select
@@ -567,8 +336,8 @@ function TeamControls() {
           <p>
             <strong className="text-slate-900">Superadmin</strong>
             <br />
-            Platform operations, rates, economics, client accounts and global
-            demo settings.
+            Platform operations, client accounts, finance and global demo
+            settings.
           </p>
           <p>
             <strong className="text-slate-900">Admin</strong>
@@ -587,216 +356,53 @@ function TeamControls() {
 }
 export function ClientPreview() {
   const data = useQuery(api.platform.team, {});
-  const [customer, setCustomer] = useState("");
-  const c = customer || data?.companies[0]?.id;
-  if (!data || !c) return <Loading />;
+  const params = useSearchParams();
+  const router = useRouter();
+  const company =
+    data?.companies.find((c) => c.id === params.get("customer")) ??
+    data?.companies[0];
+  const view = params.get("view") ?? "overview";
+  if (!data) return <Loading />;
+  if (!company) return <Empty>No client companies are available.</Empty>;
   return (
     <>
-      <div className="px-8 pt-8">
-        <Select
-          label="Preview client company"
-          value={c}
-          onChange={setCustomer}
-          options={data.companies.map((c) => ({ value: c.id, label: c.name }))}
-        />
-      </div>
-      <ClientWorkspace
-        key={c}
-        section="portal"
-        previewCustomer={c as Id<"shippingCompanies">}
-      />
-    </>
-  );
-}
-export function DemoGuide() {
-  const steps = [
-    [
-      "01",
-      "Start with the importer",
-      "Sign in as Alder & Finch Admin. Open Savings studio → SAVE-CONSOLIDATE. Compare the £6,000 baseline with the consolidated option. The initial sample offers £1,800 estimated savings after the platform fee; refreshed samples can differ.",
-    ],
-    [
-      "02",
-      "Turn insight into a quote",
-      "Request the option. Sign in as Platform Superadmin, find the new enquiry, prepare its quote and simulate sending it. Return as the client admin to accept it. A user can request and compare but cannot approve.",
-    ],
-    [
-      "03",
-      "Move the work forward",
-      "As superadmin, simulate booking confirmation and plan the shipment. As client admin, assign the linked enquiry to a teammate. Sign in as that user to see only their assigned work.",
-    ],
-    [
-      "04",
-      "Coordinate documents and delivery",
-      "Upload a sample PDF or text file as the assigned user. Approve it as superadmin, simulate a tracking milestone and return to the client view. The update and shared attachment persist after reload.",
-    ],
-    [
-      "05",
-      "Show value on both sides",
-      "Issue a demo shipment invoice and record a partial payment as superadmin. Compare customer savings with supplier costs and platform gross margin. Clients see their invoice and approved selling price, never internal economics.",
-    ],
-    [
-      "06",
-      "Prove the boundary",
-      "Sign in as Northstar Admin: Alder & Finch records are unavailable. Explore SAVE-SERVICE, then show Data Sources, a simulated refresh and the unchanged saved comparison snapshot.",
-    ],
-  ];
-  return (
-    <div className="workspace-page">
-      <PageHeading
-        label="Demonstration & roadmap"
-        title="From a better decision to a better business."
-        description="A ten-minute story for importers, operators and partners. Everything below separates what works today from what would be required to run a live service."
-      />
-      <div className="value-banner">
-        <BookOpen className="size-6 text-teal-200" />
-        <h2 className="mt-5 text-3xl font-medium tracking-tight">
-          One workflow. Two measurable outcomes.
-        </h2>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-          Importers gain visibility and control over logistics costs. The
-          platform can earn transparent service fees and a sustainable gross
-          margin by coordinating suppliers and removing avoidable work. This
-          demo illustrates the model; it does not establish real savings or
-          market rates.
-        </p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {steps.map(([n, title, body]) => (
-          <Panel key={n}>
-            <p className="eyebrow">{n} / Guided walkthrough</p>
-            <h2 className="mt-3 text-lg font-semibold">{title}</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
-          </Panel>
-        ))}
-      </div>
-      <Panel title="Benefits to demonstrate">
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            [
-              "For importers",
-              "Comparable quotes, fee transparency, consolidation opportunities, earlier document preparation, fewer handover gaps and an accountable view of each shipment.",
-            ],
-            [
-              "For operators",
-              "Connected records, less repeated entry, tasks and exception follow-up, consistent document review and a shared operational history.",
-            ],
-            [
-              "For the platform",
-              "Visible supplier costs, service fees and estimated gross margin; repeatable client onboarding and a basis for measuring retention and cost to serve.",
-            ],
-          ].map(([title, body]) => (
-            <div key={title}>
-              <ShieldCheck className="size-5 text-teal-700" />
-              <h3 className="mt-4 font-medium">{title}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
-            </div>
-          ))}
+      <div className="mx-auto max-w-[1440px] px-5 pt-6 sm:px-8 xl:px-10">
+        <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-teal-200 bg-teal-50/60 p-4">
+          <div>
+            <p className="text-sm font-semibold text-teal-950">
+              Client preview · Read only
+            </p>
+            <p className="mt-1 text-xs text-teal-800">
+              Explore the client workspace without changing records.
+            </p>
+          </div>
+          <Select
+            label="Client company"
+            value={company.id}
+            onChange={(customer) =>
+              router.replace(clientHref("overview", {}, customer))
+            }
+            options={data.companies.map((c) => ({
+              value: c.id,
+              label: c.name,
+            }))}
+          />
         </div>
-      </Panel>
-      <Panel title="A practical path to a live service">
-        <ol className="space-y-6">
-          {[
-            [
-              "1. Prove the economics",
-              "Pilot a narrow set of trade lanes with willing importers and forwarders. Establish comparable baselines, exclusions and service targets; measure net savings and support effort.",
-            ],
-            [
-              "2. Connect licensed data",
-              "Agree supplier access and licensing. Ingest rates, surcharges, schedules and milestones with provenance, validation, expiry rules, deduplication and reconciliation.",
-            ],
-            [
-              "3. Harden identity and operations",
-              "Replace public demo credentials with private invitations, recovery and MFA/SSO. Add audit retention, tenant-scale pagination, monitored jobs, backups and tested recovery.",
-            ],
-            [
-              "4. Fulfil and bill reliably",
-              "Integrate carrier booking, document exchange, invoicing and payment providers. Define approvals, reconciliation, refunds, service ownership and escalation procedures.",
-            ],
-            [
-              "5. Scale from evidence",
-              "Track realised savings, on-time delivery, gross margin, customer retention and cost to serve. Expand lanes and automation only when data quality and service economics justify it.",
-            ],
-          ].map(([title, body]) => (
-            <li key={title}>
-              <h3 className="text-sm font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{body}</p>
-            </li>
-          ))}
-        </ol>
-      </Panel>
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-xs leading-7 text-amber-900">
-        <strong>Working demo:</strong> real authentication, backend permissions,
-        persistent records, uploads, workflow transitions and calculations.
-        <br />
-        <strong>Simulated:</strong> supplier data, tracking events, booking
-        confirmations, invitation emails, invoice sending and payment receipts.
-        No customs determination or guaranteed savings.
-        <br />
-        <strong>Public demo:</strong> all advertised accounts are intentionally
-        accessible. Do not upload confidential documents.
       </div>
-      <Button variant="outline" onClick={() => window.print()}>
-        Print demo guide
-      </Button>
-    </div>
+      {view === "sources" ? (
+        <Sources readOnly />
+      ) : (
+        <ClientWorkspace
+          key={`${company.id}:${view}`}
+          section={view}
+          previewCustomer={company.id}
+        />
+      )}
+    </>
   );
 }
 export function Loading() {
   return (
     <div className="p-10 text-sm text-slate-600">Loading your workspace…</div>
-  );
-}
-export function CommercialHero() {
-  const data = useQuery(api.savings.overview);
-  const s = data?.scenarios[0],
-    o = s?.options[0];
-  return (
-    <div className="value-banner grid gap-7 xl:grid-cols-[1.25fr_1fr]">
-      <div>
-        <p className="eyebrow !text-teal-200">The next chapter of freight</p>
-        <h2 className="mt-4 max-w-lg text-4xl font-medium leading-[1.12] tracking-[-.035em]">
-          Create value at
-          <br />
-          <span className="text-teal-200">every movement.</span>
-        </h2>
-        <p className="mt-5 max-w-lg text-sm leading-7 text-slate-300">
-          Connect supplier intelligence with operational execution. Help
-          importers keep more value while building a profitable service.
-        </p>
-        <Link
-          href="/shipping/savings"
-          className="mt-6 inline-flex items-center gap-3 text-xs font-semibold text-teal-100"
-        >
-          Explore savings studio <ArrowUpRight className="size-4" />
-        </Link>
-      </div>
-      <div className="flex flex-col justify-center rounded-xl border border-white/15 bg-white/[.035] p-6">
-        <p className="text-[10px] uppercase tracking-[.2em] text-slate-400">
-          One illustrative movement · {s?.currency ?? "GBP"}
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-slate-300">Importer saves</p>
-            <p className="mt-3 text-3xl font-medium tracking-tight text-teal-100">
-              {o && s ? money(o.savingMinor, s.currency) : "—"}
-            </p>
-          </div>
-          <div className="border-l border-white/15 pl-5">
-            <p className="text-xs text-slate-300">Platform margin</p>
-            <p className="mt-3 text-3xl font-medium tracking-tight">
-              {o && s ? money(o.marginMinor ?? 0, s.currency) : "—"}
-            </p>
-          </div>
-        </div>
-        <div className="mt-7 border-t border-white/15 pt-4 text-[11px] leading-6 text-slate-400">
-          {s?.origin} → {s?.destination}
-          <br />
-          Estimated savings after fees · Gross margin before overheads
-          <br />
-          Sample rates, not guaranteed results
-        </div>
-      </div>
-    </div>
   );
 }

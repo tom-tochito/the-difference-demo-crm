@@ -76,7 +76,7 @@ export const initialize = internalAction({
         });
     }
     await ctx.runMutation(internal.platform.features, {});
-    return "Freight identities and savings initialized; existing edits preserved.";
+    return "Freight identities and sources initialized; existing edits preserved.";
   },
 });
 export const team = query({

@@ -1,3 +1,5 @@
-import { Suspense } from "react";
-import { ShippingApp } from "@/features/shipping/shipping-app";
-export default function Page(){return <Suspense fallback={<div className="p-8">Loading…</div>}><ShippingApp section="guide"/></Suspense>}
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/shipping");
+}

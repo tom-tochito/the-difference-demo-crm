@@ -39,31 +39,28 @@ export default function Login() {
         </div>
         <div className="relative z-10 my-14 max-w-lg">
           <p className="mb-7 text-[10px] uppercase tracking-[.3em] text-teal-200">
-            Intelligent freight. Measurable value.
+            One service. Every step.
           </p>
           <h1 className="text-5xl font-medium leading-[1.08] tracking-[-.04em] sm:text-6xl">
-            Move goods.
+            Your freight,
             <br />
-            Keep more
-            <br />
-            <span className="text-teal-200">of the value.</span>
+            <span className="text-teal-200">all in one place.</span>
           </h1>
           <p className="mt-7 max-w-sm text-sm leading-7 text-slate-300">
-            A connected workspace for better freight decisions. Compare costs,
-            coordinate shipments and turn operational insight into customer
-            savings.
+            Request a quote, follow your shipments, share documents and manage
+            invoices. One connected service for your whole team.
           </p>
           <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/15 pt-6 text-xs">
             <span>
-              Cost clarity
+              Clear progress
               <ArrowUpRight className="mt-3 size-4 text-teal-200" />
             </span>
             <span>
-              Client control
+              Your team
               <ShieldCheck className="mt-3 size-4 text-teal-200" />
             </span>
             <span>
-              Connected work
+              One workspace
               <Compass className="mt-3 size-4 text-teal-200" />
             </span>
           </div>

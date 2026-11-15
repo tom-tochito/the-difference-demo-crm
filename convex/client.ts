@@ -18,7 +18,10 @@ import {
 } from "./shippingModel";
 
 export const snapshot = query({
-  args: { customerId: v.optional(v.id("shippingCompanies")), now: v.optional(v.number()) },
+  args: {
+    customerId: v.optional(v.id("shippingCompanies")),
+    now: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const { user, customerId } = await clientIdentity(ctx, args.customerId);
     const company = await ctx.db.get("shippingCompanies", customerId);
@@ -93,6 +96,7 @@ export const snapshot = query({
         bookings.push({
           _id: b._id,
           reference: b.reference,
+          quoteId: b.quoteId,
           origin: b.origin,
           destination: b.destination,
           confirmed: b.confirmed,
@@ -113,6 +117,7 @@ export const snapshot = query({
         return {
           _id: s._id,
           reference: s.reference,
+          bookingId: s.bookingId,
           origin: s.origin,
           destination: s.destination,
           cargo: s.cargo,
@@ -172,6 +177,7 @@ export const snapshot = query({
         invoices.push({
           _id: i._id,
           reference: i.reference,
+          shipmentId: i.shipmentId,
           currency: i.currency,
           total: total(i.charges),
           paid,

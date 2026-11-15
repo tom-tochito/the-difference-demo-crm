@@ -1,12 +1,11 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "../../convex/_generated/api";
 import {
-  ArrowUpRight,
   ArrowRightLeft,
   LayoutDashboard,
   Ship,
@@ -21,7 +20,6 @@ import {
   LogOut,
   Menu,
   Search,
-  BookOpen,
   Compass,
 } from "lucide-react";
 import {
@@ -31,9 +29,17 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { CommandPalette, useCommandPalette } from "./command-palette";
+import { clientNavigation, clientHref } from "@/features/shipping/navigation";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const user = useQuery(api.users.currentUser);
   const path = usePathname();
+  const params = useSearchParams();
+  const preview = user?.role === "superadmin" && path === "/shipping/portal";
+  const team = useQuery(api.platform.team, preview ? {} : "skip");
+  const previewCompany =
+    team?.companies.find((c) => c.id === params.get("customer")) ??
+    team?.companies[0];
+  const previewView = params.get("view") ?? "overview";
   const { signOut } = useAuthActions();
   const [drawer, setDrawer] = useState(false);
   const { open, setOpen } = useCommandPalette();
@@ -51,48 +57,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       </div>
     );
+  if (preview && !team)
+    return (
+      <div className="p-8 text-sm text-slate-600">Opening client preview…</div>
+    );
   const platform = user.role === "superadmin";
+  const client = !platform || preview;
+  const icons = [
+    LayoutDashboard,
+    ClipboardList,
+    FileText,
+    Ship,
+    FileText,
+    Wallet,
+  ];
   const groups = [
     {
-      label: "Intelligence",
-      items: [
-        ["", "Overview", LayoutDashboard],
-        ["savings", "Savings studio", ArrowUpRight],
-        ["sources", "Data sources", Database],
-      ],
+      label: client ? "Your workspace" : "Operations",
+      items: client
+        ? clientNavigation.map(([slug, label], i) => [slug, label, icons[i]])
+        : [
+            ["overview", "Home", LayoutDashboard],
+            ["customers", "Customers & partners", Building2],
+            ["enquiries", "Requests", ClipboardList],
+            ["quotes", "Quotations", FileText],
+            ["bookings", "Bookings", ArrowRightLeft],
+            ["shipments", "Shipments", Ship],
+            ["documents", "Documents", FileText],
+            ["tasks", "Tasks & exceptions", ClipboardList],
+            ["finance", "Finance", Wallet],
+            ["reports", "Reports", ChartNoAxesCombined],
+          ],
     },
     {
-      label: "Operations",
+      label: "More",
       items: [
-        ...(platform ? [["customers", "Customers & partners", Building2]] : []),
-        ["enquiries", "Enquiries", ClipboardList],
-        ["quotes", "Quotations", FileText],
-        ["bookings", "Bookings", ArrowRightLeft],
-        ["shipments", "Shipments & tracking", Ship],
-        ["documents", "Documents", FileText],
-        ["tasks", "Tasks & exceptions", ClipboardList],
-        ["finance", platform ? "Finance" : "Invoices", Wallet],
-        ...(platform
-          ? [
-              ["reports", "Reports", ChartNoAxesCombined],
-              ["portal", "Client preview", Compass],
-            ]
+        ...(platform && !preview
+          ? [["portal", "Client preview", Compass]]
           : []),
-      ],
-    },
-    {
-      label: "Workspace",
-      items: [
-        ...(user.role !== "user" ? [["team", "Team & access", Users]] : []),
-        ["guide", "Demo guide", BookOpen],
-        ...(platform ? [["settings", "Demo settings", Settings2]] : []),
+        ...(!preview && user.role !== "user" ? [["team", "Team", Users]] : []),
+        ["sources", "Data sources", Database],
+        ...(platform && !preview
+          ? [["settings", "Demo settings", Settings2]]
+          : []),
       ],
     },
   ];
   const sidebar = (
     <div className="flex h-full flex-col bg-[#101f2c] text-slate-300">
       <Link
-        href="/shipping"
+        href={clientHref("overview", {}, previewCompany?.id)}
         className="flex items-center gap-3 px-6 pt-7 pb-5"
         onClick={() => setDrawer(false)}
       >
@@ -108,22 +122,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Link>
       <div className="mx-4 mb-4 rounded-lg border border-white/10 px-3 py-3">
         <p className="text-[10px] uppercase tracking-widest text-slate-400">
-          {platform ? "Platform workspace" : "Client workspace"}
+          {preview
+            ? "Read-only client preview"
+            : platform
+              ? "Platform workspace"
+              : "Client workspace"}
         </p>
         <p className="mt-1 truncate text-xs text-white">
-          {user.company ?? "All client organisations"}
+          {previewCompany?.name ?? user.company ?? "All client organisations"}
         </p>
       </div>
-      <button
-        onClick={() => {
-          setDrawer(false);
-          setOpen(true);
-        }}
-        className="mx-4 mb-1 flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300"
-      >
-        <Search className="size-3.5" />
-        Search your workspace <span className="ml-auto text-[10px]">⌘K</span>
-      </button>
+      {!preview && (
+        <button
+          onClick={() => {
+            setDrawer(false);
+            setOpen(true);
+          }}
+          className="mx-4 mb-1 flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300"
+        >
+          <Search className="size-3.5" />
+          Search your workspace <span className="ml-auto text-[10px]">⌘K</span>
+        </button>
+      )}
       <nav className="flex-1 overflow-y-auto px-3 pb-3">
         {groups.map((g) => (
           <div key={g.label}>
@@ -131,14 +151,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {g.label}
             </p>
             {g.items.map(([slug, label, Icon]) => {
-              const href = `/shipping${slug ? `/${slug}` : ""}`;
+              const href = clientHref(
+                String(slug),
+                {},
+                preview ? previewCompany?.id : undefined,
+              );
+              const selected = preview
+                ? previewView
+                : path.split("/").at(-1) === "shipping"
+                  ? "overview"
+                  : path.split("/").at(-1);
+              const active =
+                selected === slug ||
+                (client && slug === "quotes" && selected === "bookings");
               const I = Icon as typeof Ship;
               return (
                 <Link
                   key={href}
                   href={href}
+                  aria-current={active ? "page" : undefined}
                   onClick={() => setDrawer(false)}
-                  className={`my-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition-colors ${path === href ? "bg-teal-300/10 text-teal-100 ring-1 ring-inset ring-teal-300/15" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+                  className={`my-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition-colors ${active ? "bg-teal-300/10 text-teal-100 ring-1 ring-inset ring-teal-300/15" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
                 >
                   <I className="size-4 opacity-80" />
                   {label as string}
@@ -149,6 +182,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
       <div className="border-t border-white/10 px-5 py-4">
+        {preview && (
+          <Link
+            href="/shipping"
+            className="mb-4 block text-xs font-medium text-teal-200"
+          >
+            ← Exit client preview
+          </Link>
+        )}
         <div className="flex items-center gap-3">
           <div className="flex size-8 items-center justify-center rounded-full bg-slate-700 text-xs text-white">
             {user.name
@@ -192,13 +233,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SheetContent>
         </Sheet>
         <span className="text-sm font-medium">Freight Operations</span>
-        <button
-          aria-label="Search"
-          className="ml-auto"
-          onClick={() => setOpen(true)}
-        >
-          <Search className="size-4" />
-        </button>
+        {!preview && (
+          <button
+            aria-label="Search"
+            className="ml-auto"
+            onClick={() => setOpen(true)}
+          >
+            <Search className="size-4" />
+          </button>
+        )}
       </header>
       <main
         id="main"
@@ -206,10 +249,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="hidden h-14 items-center justify-between border-b border-slate-200/80 bg-white/60 px-8 text-[11px] text-slate-600 lg:flex">
           <span>
-            {platform ? "Platform intelligence & operations" : user.company}{" "}
+            {platform ? "Freight Operations" : user.company}{" "}
             <span className="mx-3 text-slate-300">/</span>{" "}
             {path.split("/").at(-1) === "shipping"
-              ? "Overview"
+              ? "Home"
               : path
                   .split("/")
                   .at(-1)
@@ -222,7 +265,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         {children}
       </main>
-      <CommandPalette open={open} onOpenChange={setOpen} />
+      {!preview && <CommandPalette open={open} onOpenChange={setOpen} />}
     </div>
   );
 }

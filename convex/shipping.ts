@@ -368,6 +368,8 @@ export const setQuoteStage = mutation({
       throw new ConvexError(
         "Use Accept & book to accept a quote; accepted quotes are locked.",
       );
+    if (stage === "Quote Sent" || stage === "Negotiation")
+      validateCharges(q.charges);
     await ctx.db.patch("shippingQuotes", id, { stage });
     if (q.enquiryId)
       await ctx.db.patch("shippingEnquiries", q.enquiryId, { stage });

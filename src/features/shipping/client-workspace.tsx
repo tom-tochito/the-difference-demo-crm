@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   ArrowUpRight,
-  ArrowRight,
   PackageCheck,
   FileCheck2,
   Plus,
@@ -31,6 +30,7 @@ import {
   Table,
 } from "./shared";
 import { DOCUMENT_TYPES, DAY } from "../../../convex/shippingModel";
+import { clientHref } from "./navigation";
 export function ClientWorkspace({
   section,
   previewCustomer,
@@ -62,7 +62,58 @@ export function ClientWorkspace({
       </div>
     );
   const id = params.get("id");
-  const selected = data.shipments.find((s) => s._id === id);
+  const selected = ["shipments", "tracking", "documents", "portal"].includes(
+    section,
+  )
+    ? data.shipments.find((s) => s._id === id)
+    : undefined;
+  const href = (view: string, query: Record<string, string> = {}) =>
+    clientHref(view, query, previewCustomer);
+  const filter = params.get("filter");
+  const reviewQuotes = data.quotes.filter(
+    (q) => ["Quote Sent", "Negotiation"].includes(q.stage) && q.validity >= now,
+  );
+  const openTasks = data.tasks.filter((t) => !t.done);
+  const activeShipments = data.shipments
+    .filter((s) => s.status !== "Delivered")
+    .sort((a, b) => a.eta - b.eta);
+  const needsDocuments = activeShipments.filter((s) =>
+    data.requirements[s.mode].some(
+      (type) =>
+        !s.documents.some((d) => d.type === type && d.status === "Approved"),
+    ),
+  );
+  const actions = [
+    ...reviewQuotes.map((q) => ({
+      key: q._id,
+      label: `Review ${q.reference}`,
+      detail: `${q.origin} → ${q.destination}`,
+      due: q.validity,
+      kind: "Quotation",
+      href: href("quotes", { id: q._id }),
+    })),
+    ...openTasks.map((t) => ({
+      key: t._id,
+      label: t.title,
+      detail: [
+        data.shipments.find((s) => s._id === t.shipmentId)?.reference,
+        t.assignee,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      due: t.dueAt,
+      kind: "Task",
+      href: href("tasks", { id: t._id }),
+    })),
+    ...needsDocuments.map((s) => ({
+      key: s._id,
+      label: `Check documents · ${s.reference}`,
+      detail: `${s.origin} → ${s.destination}`,
+      due: s.etd,
+      kind: "Documents",
+      href: href("documents", { id: s._id }),
+    })),
+  ].sort((a, b) => a.due - b.due);
   const allowed = [
     "overview",
     "enquiries",
@@ -85,10 +136,18 @@ export function ClientWorkspace({
   const s =
     selected ??
     (section === "tracking" || section === "documents" || section === "portal"
-      ? data.shipments[0]
+      ? id
+        ? undefined
+        : (needsDocuments[0] ?? data.shipments[0])
       : undefined);
   const matches = (...values: string[]) =>
     values.join(" ").toLowerCase().includes(search.toLowerCase());
+  const visibleQuotes = data.quotes.filter(
+    (q) =>
+      (!id || q._id === id) &&
+      (filter !== "review" || reviewQuotes.some((r) => r._id === q._id)) &&
+      matches(q.reference, q.origin, q.destination),
+  );
   const page = Number(params.get("page") ?? 1);
   const setPage = (p: number) => {
     const next = new URLSearchParams(params.toString());
@@ -97,12 +156,6 @@ export function ClientWorkspace({
   };
   return (
     <div className="mx-auto max-w-[1440px] space-y-7 p-5 sm:p-8 xl:p-10">
-      {previewCustomer && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Client preview · You are viewing the client-safe response as a
-          superadmin.
-        </div>
-      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">
@@ -113,36 +166,36 @@ export function ClientWorkspace({
             {s
               ? s.reference
               : ({
-                  overview: "Your freight. A clearer view.",
-                  enquiries: "Your enquiries",
-                  quotes: "Quotations & approvals",
-                  bookings: "Confirmed plans",
+                  overview: "Your freight, all in one place.",
+                  enquiries: "Your requests",
+                  quotes: "Quotes & bookings",
+                  bookings: "Quotes & bookings",
                   shipments: "Your shipments",
                   tracking: "Follow every movement",
                   documents: "Documents & readiness",
                   tasks: "Your next actions",
                   finance: "Invoices & balances",
                   reports: "Your invoices",
-                  portal: "Your freight. A clearer view.",
+                  portal: "Your freight, all in one place.",
                 }[section] ?? "Your workspace")}
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
             {s
               ? `${s.origin} → ${s.destination}`
-              : "Clarity on cost. Confidence in every handover. Only your company’s work, with the access you need."}
+              : "From your first request to the final invoice. Everything your team needs to keep freight moving."}
           </p>
         </div>
         {!previewCustomer && ["overview", "enquiries"].includes(section) && (
           <Button onClick={() => setCreate((v) => !v)}>
             <Plus className="size-4" />
-            New enquiry
+            Request a quote
           </Button>
         )}
       </div>
       {create && (
         <Panel title="Tell us what needs to move">
           <form
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            className="space-y-6"
             onSubmit={async (e) => {
               e.preventDefault();
               setBusy(true);
@@ -160,9 +213,9 @@ export function ClientWorkspace({
                   eta: Date.parse(String(f.get("arrival"))),
                   currency: String(f.get("currency")) as "GBP" | "EUR" | "USD",
                 });
-                toast.success("Enquiry submitted to the platform team");
+                toast.success("Request sent to the platform team");
                 setCreate(false);
-                router.push("/shipping/enquiries");
+                router.push(href("enquiries"));
               } catch (err) {
                 toast.error(
                   err instanceof Error ? err.message : "Could not submit",
@@ -173,57 +226,89 @@ export function ClientWorkspace({
             }}
           >
             {[
-              ["origin", "Origin", "text", ""],
-              ["destination", "Destination", "text", ""],
-              ["cargo", "Cargo", "text", ""],
-              ["weight", "Gross weight (kg)", "number", "1200"],
-              ["volume", "Volume (m³)", "number", "8"],
-              ["packages", "Packages", "number", "8"],
-              [
-                "departure",
-                "Requested departure",
-                "date",
-                new Date(now + 7 * DAY).toISOString().slice(0, 10),
-              ],
-              [
-                "arrival",
-                "Requested arrival",
-                "date",
-                new Date(now + 35 * DAY).toISOString().slice(0, 10),
-              ],
-            ].map(([name, label, type, value]) => (
-              <label className="field-label" key={name}>
-                {label}
-                <input
-                  className={inputClass}
-                  name={name}
-                  type={type}
-                  defaultValue={value}
-                  required
-                  min={type === "number" ? "0" : undefined}
-                  step={name === "packages" ? "1" : "any"}
-                />
-              </label>
+              {
+                title: "Route & timing",
+                fields: [
+                  ["origin", "Origin", "text", ""],
+                  ["destination", "Destination", "text", ""],
+                  [
+                    "departure",
+                    "Requested departure",
+                    "date",
+                    new Date(now + 7 * DAY).toISOString().slice(0, 10),
+                  ],
+                  [
+                    "arrival",
+                    "Requested arrival",
+                    "date",
+                    new Date(now + 35 * DAY).toISOString().slice(0, 10),
+                  ],
+                ],
+              },
+              {
+                title: "Your cargo",
+                fields: [
+                  ["cargo", "Cargo description", "text", ""],
+                  ["packages", "Packages", "number", "8"],
+                  ["weight", "Gross weight (kg)", "number", "1200"],
+                  ["volume", "Volume (m³)", "number", "8"],
+                ],
+              },
+            ].map((group) => (
+              <fieldset key={group.title}>
+                <legend className="mb-4 text-sm font-semibold text-slate-900">
+                  {group.title}
+                </legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {group.fields.map(([name, label, type, value]) => (
+                    <label className="field-label" key={name}>
+                      {label}
+                      <input
+                        className={inputClass}
+                        name={name}
+                        type={type}
+                        defaultValue={value}
+                        required
+                        min={
+                          type === "number"
+                            ? name === "volume"
+                              ? "0"
+                              : "1"
+                            : undefined
+                        }
+                        step={name === "packages" ? "1" : "any"}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             ))}
-            <label className="field-label">
-              Transport mode
-              <select className={inputClass} name="mode">
-                <option value="sea">Sea</option>
-                <option value="air">Air</option>
-                <option value="road">Road</option>
-              </select>
-            </label>
-            <label className="field-label">
-              Currency
-              <select className={inputClass} name="currency">
-                <option>GBP</option>
-                <option>EUR</option>
-                <option>USD</option>
-              </select>
-            </label>
-            <div className="flex items-end gap-2">
+            <fieldset>
+              <legend className="mb-4 text-sm font-semibold text-slate-900">
+                Service preferences
+              </legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="field-label">
+                  Transport mode
+                  <select className={inputClass} name="mode">
+                    <option value="sea">Sea</option>
+                    <option value="air">Air</option>
+                    <option value="road">Road</option>
+                  </select>
+                </label>
+                <label className="field-label">
+                  Currency
+                  <select className={inputClass} name="currency">
+                    <option>GBP</option>
+                    <option>EUR</option>
+                    <option>USD</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+            <div className="flex items-end gap-2 border-t pt-5">
               <Button disabled={busy}>
-                {busy ? "Submitting…" : "Submit enquiry"}
+                {busy ? "Submitting…" : "Send request"}
               </Button>
               <Button
                 type="button"
@@ -240,82 +325,155 @@ export function ClientWorkspace({
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              [
-                "Active shipments",
-                data.shipments.filter((s) => s.status !== "Delivered").length,
-                "shipments",
-              ],
-              [
-                "Quotes awaiting review",
-                data.quotes.filter((q) => q.stage === "Quote Sent").length,
-                "quotes",
-              ],
-              [
-                "Open actions",
-                data.tasks.filter((t) => !t.done).length,
-                "tasks",
-              ],
-            ].map(([label, value, path]) => (
+              {
+                label: "Active shipments",
+                count: activeShipments.length,
+                view: "shipments",
+                filter: "active",
+              },
+              {
+                label: "Quotes awaiting approval",
+                count: reviewQuotes.length,
+                view: "quotes",
+                filter: "review",
+              },
+              {
+                label: "Open tasks",
+                count: openTasks.length,
+                view: "tasks",
+                filter: "open",
+              },
+            ].map((card) => (
               <Link
-                href={`/shipping/${path}`}
-                key={label}
-                className="metric-card"
+                href={href(card.view, { filter: card.filter })}
+                key={card.view}
+                className="metric-card transition-colors hover:border-teal-500"
               >
-                <span className="text-xs text-slate-600">{label}</span>
+                <span className="text-xs font-medium text-slate-600">
+                  {card.label}
+                </span>
                 <div className="mt-5 flex items-end justify-between">
                   <strong className="text-4xl font-medium tracking-tight">
-                    {value}
+                    {card.count}
                   </strong>
                   <ArrowUpRight className="size-4 text-teal-700" />
                 </div>
               </Link>
             ))}
           </div>
-          <div className="value-banner">
-            <div>
-              <p className="eyebrow !text-teal-200">
-                Make your next move a better one
-              </p>
-              <h2 className="mt-3 text-3xl font-medium tracking-tight">
-                A lower cost starts with a clearer choice.
-              </h2>
-              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">
-                Compare routes and service levels, understand every fee, and
-                request a quote with the assumptions already attached.
-              </p>
-            </div>
-            <Link
-              className="mt-6 inline-flex items-center gap-3 text-sm font-medium text-teal-100"
-              href="/shipping/savings"
+          <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[1.2fr_1fr]">
+            <Panel
+              title="Shipments in progress"
+              action={
+                <Link
+                  className="text-xs font-medium text-teal-800"
+                  href={href("shipments")}
+                >
+                  View all →
+                </Link>
+              }
             >
-              Explore your savings opportunities{" "}
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
-          <Panel title="Movements in focus">
-            {data.shipments.length ? (
-              <div className="divide-y">
-                {data.shipments.slice(0, 5).map((s) => (
-                  <Link
-                    href={`/shipping/shipments?id=${s._id}`}
-                    key={s._id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-4"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold">{s.reference}</p>
-                      <p className="mt-2 text-xs text-slate-600">
+              {activeShipments.length ? (
+                <div className="divide-y">
+                  {activeShipments.slice(0, 5).map((s) => (
+                    <Link
+                      href={href("shipments", { id: s._id })}
+                      key={s._id}
+                      className="group block py-4 first:pt-0 last:pb-0"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-slate-900 group-hover:text-teal-800">
+                          {s.reference}
+                        </p>
+                        <Badge>{s.status}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">
                         {s.origin} → {s.destination}
                       </p>
-                    </div>
-                    <Badge>{s.status}</Badge>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <Empty>Your admin can assign shipments to your account.</Empty>
-            )}
-          </Panel>
+                      <p className="mt-3 text-xs text-slate-600">
+                        Expected arrival {date(s.eta)}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Empty>
+                  No shipments in progress. Your next movement will appear here.
+                </Empty>
+              )}
+            </Panel>
+            <Panel
+              title="Needs your attention"
+              action={
+                <Link
+                  className="text-xs font-medium text-teal-800"
+                  href={href("tasks", { filter: "open" })}
+                >
+                  All tasks →
+                </Link>
+              }
+            >
+              {actions.length ? (
+                <div className="divide-y">
+                  {actions.slice(0, 6).map((a) => (
+                    <Link
+                      key={a.key}
+                      href={a.href}
+                      className="block py-4 first:pt-0 last:pb-0"
+                    >
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-teal-700">
+                        {a.kind} · {date(a.due)}
+                      </p>
+                      <p className="text-sm font-medium text-slate-900">
+                        {a.label}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">{a.detail}</p>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Empty>
+                  You’re up to date. Anything needing your attention will appear
+                  here.
+                </Empty>
+              )}
+            </Panel>
+          </div>
         </>
+      )}
+      {["quotes", "bookings"].includes(section) && (
+        <nav
+          aria-label="Quotes and bookings"
+          className="flex gap-1 border-b border-slate-200"
+        >
+          {[
+            ["quotes", "Quotations"],
+            ["bookings", "Bookings"],
+          ].map(([view, label]) => (
+            <Link
+              key={view}
+              href={href(view)}
+              aria-current={section === view ? "page" : undefined}
+              className={`border-b-2 px-5 py-3 text-sm font-medium ${section === view ? "border-teal-700 text-teal-800" : "border-transparent text-slate-600 hover:text-slate-900"}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+      {filter && (
+        <div className="flex items-center gap-3 text-xs text-slate-600">
+          <Badge>
+            {filter === "review"
+              ? "Awaiting approval"
+              : filter === "active"
+                ? "Active shipments"
+                : "Open tasks"}
+          </Badge>
+          <Link className="underline" href={href(section)}>
+            Clear filter
+          </Link>
+        </div>
       )}
       {!s && section !== "overview" && (
         <label className="field-label max-w-md">
@@ -338,7 +496,7 @@ export function ClientWorkspace({
               matches(e.reference, e.origin, e.destination),
           )}
           columns={[
-            { label: "Enquiry", render: (e) => <strong>{e.reference}</strong> },
+            { label: "Request", render: (e) => <strong>{e.reference}</strong> },
             {
               label: "Route",
               render: (e) => (
@@ -355,75 +513,68 @@ export function ClientWorkspace({
       )}
       {section === "quotes" && (
         <div className="space-y-4">
-          {data.quotes
-            .filter(
-              (q) =>
-                (!id || q._id === id) &&
-                matches(q.reference, q.origin, q.destination),
-            )
-            .map((q) => (
-              <Panel
-                key={q._id}
-                title={q.reference}
-                action={<Badge>{q.stage}</Badge>}
-              >
-                <div className="flex flex-wrap justify-between gap-4">
-                  <div>
-                    <p className="text-sm">
-                      {q.origin} → {q.destination}
-                    </p>
-                    <p className="mt-2 text-xs text-slate-600">
-                      Valid until {date(q.validity)}
-                    </p>
-                  </div>
-                  <strong className="text-2xl font-medium">
-                    {money(q.total, q.currency)}
-                  </strong>
-                </div>
-                <div className="my-5 divide-y">
-                  {q.charges.map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between gap-3 py-2 text-xs"
-                    >
-                      <span>
-                        {c.description} × {c.quantity}
-                      </span>
-                      <span>
-                        {money(
-                          Math.round(c.quantity * c.unitMinor),
-                          q.currency,
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {data.role === "user" ? (
-                  <p className="text-xs text-slate-600">
-                    Your client admin approves quotations.
+          {visibleQuotes.map((q) => (
+            <Panel
+              key={q._id}
+              title={q.reference}
+              action={<Badge>{q.stage}</Badge>}
+            >
+              <div className="flex flex-wrap justify-between gap-4">
+                <div>
+                  <p className="text-sm">
+                    {q.origin} → {q.destination}
                   </p>
-                ) : (
-                  <Action
-                    disabled={
-                      !["Quote Sent", "Negotiation", "Won"].includes(q.stage) ||
-                      (q.stage !== "Won" && q.validity < now)
-                    }
-                    onClick={async () => {
-                      await accept({ id: q._id });
-                      router.push("/shipping/bookings");
-                    }}
+                  <p className="mt-2 text-xs text-slate-600">
+                    Valid until {date(q.validity)}
+                  </p>
+                </div>
+                <strong className="text-2xl font-medium">
+                  {money(q.total, q.currency)}
+                </strong>
+              </div>
+              <div className="my-5 divide-y">
+                {q.charges.map((c, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between gap-3 py-2 text-xs"
                   >
-                    {q.stage === "Won"
-                      ? "Open accepted booking"
-                      : "Accept quote & book"}
-                  </Action>
-                )}
-              </Panel>
-            ))}
-          {!data.quotes.length && (
-            <Empty>
-              No quotations are available for your assigned work yet.
-            </Empty>
+                    <span>
+                      {c.description} × {c.quantity}
+                    </span>
+                    <span>
+                      {money(Math.round(c.quantity * c.unitMinor), q.currency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {previewCustomer ? (
+                <p className="text-xs text-slate-600">
+                  Read-only preview · Client admins approve quotations.
+                </p>
+              ) : data.role === "user" ? (
+                <p className="text-xs text-slate-600">
+                  Your client admin approves quotations.
+                </p>
+              ) : (
+                <Action
+                  disabled={
+                    !["Quote Sent", "Negotiation", "Won"].includes(q.stage) ||
+                    (q.stage !== "Won" && q.validity < now)
+                  }
+                  onClick={async () => {
+                    const bookingId = await accept({ id: q._id });
+                    router.push(href("bookings", { id: bookingId }));
+                  }}
+                >
+                  {q.stage === "Won"
+                    ? "Open accepted booking"
+                    : "Accept quote & book"}
+                </Action>
+              )}
+            </Panel>
+          ))}
+          {!visibleQuotes.length && (
+            <Empty>No quotations match this view.</Empty>
           )}
         </div>
       )}
@@ -431,11 +582,29 @@ export function ClientWorkspace({
         <Table
           page={page}
           onPage={setPage}
-          rows={data.bookings.filter((b) =>
-            matches(b.reference, b.origin, b.destination),
+          rows={data.bookings.filter(
+            (b) =>
+              (!id || b._id === id) &&
+              matches(b.reference, b.origin, b.destination),
           )}
           columns={[
-            { label: "Booking", render: (b) => <strong>{b.reference}</strong> },
+            {
+              label: "Booking",
+              render: (b) => (
+                <>
+                  <strong>{b.reference}</strong>
+                  {b.quoteId &&
+                    data.quotes.some((q) => q._id === b.quoteId) && (
+                      <Link
+                        className="mt-1 block text-xs text-teal-800 underline"
+                        href={href("quotes", { id: b.quoteId })}
+                      >
+                        View quote
+                      </Link>
+                    )}
+                </>
+              ),
+            },
             {
               label: "Route",
               render: (b) => (
@@ -443,6 +612,26 @@ export function ClientWorkspace({
                   {b.origin} → {b.destination}
                 </>
               ),
+            },
+            {
+              label: "Shipment",
+              render: (b) => {
+                const shipment = data.shipments.find(
+                  (s) => s.bookingId === b._id,
+                );
+                return shipment ? (
+                  <Link
+                    className="inline-flex min-h-8 items-center whitespace-nowrap text-xs font-medium text-teal-800 underline"
+                    href={href("shipments", { id: shipment._id })}
+                  >
+                    {shipment.reference}
+                  </Link>
+                ) : (
+                  <span className="text-xs text-slate-600">
+                    Awaiting shipment
+                  </span>
+                );
+              },
             },
             {
               label: "Agreed price",
@@ -469,16 +658,18 @@ export function ClientWorkspace({
           <Table
             page={page}
             onPage={setPage}
-            rows={data.shipments.filter((s) =>
-              matches(s.reference, s.origin, s.destination),
+            rows={data.shipments.filter(
+              (s) =>
+                (filter !== "active" || s.status !== "Delivered") &&
+                matches(s.reference, s.origin, s.destination),
             )}
             columns={[
               {
                 label: "Shipment",
                 render: (s) => (
                   <Link
-                    className="font-semibold text-teal-800"
-                    href={`?id=${s._id}`}
+                    className="inline-flex min-h-8 items-center whitespace-nowrap font-semibold text-teal-800"
+                    href={href("shipments", { id: s._id })}
                   >
                     {s.reference}
                   </Link>
@@ -504,14 +695,54 @@ export function ClientWorkspace({
             <Select
               label="Shipment"
               value={s._id}
-              onChange={(v) => router.replace(`?id=${v}`)}
+              onChange={(v) => router.replace(href(section, { id: v }))}
               options={data.shipments.map((s) => ({
                 value: s._id,
                 label: s.reference,
               }))}
             />
           )}
+          <Link
+            href={href("shipments")}
+            className="inline-flex text-xs font-medium text-teal-800"
+          >
+            ← All shipments
+          </Link>
           <RouteVisual {...s} />
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                Expected arrival
+              </p>
+              <p className="mt-1 font-semibold">{date(s.eta)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                Cargo
+              </p>
+              <p className="mt-1">{s.cargo}</p>
+            </div>
+            {s.bookingId &&
+              data.bookings.some((b) => b._id === s.bookingId) && (
+                <Link
+                  className="inline-flex min-h-8 items-center whitespace-nowrap text-xs font-medium text-teal-800 underline"
+                  href={href("bookings", { id: s.bookingId })}
+                >
+                  View booking
+                </Link>
+              )}
+            {data.invoices
+              .filter((i) => i.shipmentId === s._id)
+              .map((i) => (
+                <Link
+                  key={i._id}
+                  className="inline-flex min-h-8 items-center whitespace-nowrap text-xs font-medium text-teal-800 underline"
+                  href={href("finance", { id: i._id })}
+                >
+                  {i.reference}
+                </Link>
+              ))}
+          </div>
           <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
             <Panel
               title="Journey milestones"
@@ -540,7 +771,7 @@ export function ClientWorkspace({
                     <Badge>{d.status}</Badge>
                     {d.url && (
                       <a
-                        className="text-xs font-medium text-teal-800 underline"
+                        className="inline-flex min-h-8 items-center whitespace-nowrap text-xs font-medium text-teal-800 underline"
                         href={d.url}
                         target="_blank"
                         rel="noreferrer"
@@ -618,6 +849,39 @@ export function ClientWorkspace({
                   </div>
                 )}
               </Panel>
+              <Panel
+                title="Related tasks"
+                action={
+                  <Link
+                    className="text-xs font-medium text-teal-800"
+                    href={href("tasks", { shipment: s._id })}
+                  >
+                    View tasks →
+                  </Link>
+                }
+              >
+                {data.tasks.filter((t) => t.shipmentId === s._id).length ? (
+                  data.tasks
+                    .filter((t) => t.shipmentId === s._id)
+                    .map((t) => (
+                      <Link
+                        key={t._id}
+                        href={href("tasks", { id: t._id })}
+                        className="flex flex-wrap items-center justify-between gap-2 border-b py-3 text-sm last:border-0"
+                      >
+                        <span>
+                          {t.title}
+                          <span className="mt-1 block text-xs text-slate-600">
+                            {t.assignee} · {date(t.dueAt)}
+                          </span>
+                        </span>
+                        <Badge>{t.done ? "Complete" : "Open"}</Badge>
+                      </Link>
+                    ))
+                ) : (
+                  <Empty>No tasks for this shipment.</Empty>
+                )}
+              </Panel>
               <Panel title="Customer updates">
                 {s.updates.length ? (
                   s.updates.map((u, i) => (
@@ -640,23 +904,36 @@ export function ClientWorkspace({
         </>
       )}
       {["tracking", "documents", "portal"].includes(section) && !s && (
-        <Empty>No shipments assigned to this account.</Empty>
+        <Empty>
+          {id
+            ? "This shipment is not available to your account."
+            : "No shipments assigned to this account."}
+        </Empty>
       )}
       {section === "tasks" && (
         <>
-          <label className="field-label max-w-xl">
-            Completion note
-            <input
-              className={inputClass}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="What was completed?"
-            />
-          </label>
+          {!previewCustomer && (
+            <label className="field-label max-w-xl">
+              Completion note
+              <input
+                className={inputClass}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="What was completed?"
+              />
+            </label>
+          )}
           <Table
             page={page}
             onPage={setPage}
-            rows={data.tasks.filter((t) => matches(t.title, t.assignee))}
+            rows={data.tasks.filter(
+              (t) =>
+                (!id || t._id === id) &&
+                (!params.get("shipment") ||
+                  t.shipmentId === params.get("shipment")) &&
+                (filter !== "open" || !t.done) &&
+                matches(t.title, t.assignee),
+            )}
             columns={[
               {
                 label: "Task",
@@ -674,9 +951,11 @@ export function ClientWorkspace({
                 render: (t) =>
                   t.done ? (
                     <Badge>Complete</Badge>
+                  ) : previewCustomer ? (
+                    <Badge>Open</Badge>
                   ) : (
                     <Action
-                      disabled={!note.trim() || !!previewCustomer}
+                      disabled={!note.trim()}
                       onClick={() => complete({ id: t._id, resolution: note })}
                     >
                       Complete task
@@ -691,9 +970,26 @@ export function ClientWorkspace({
         <Table
           page={page}
           onPage={setPage}
-          rows={data.invoices.filter((i) => matches(i.reference))}
+          rows={data.invoices.filter(
+            (i) => (!id || i._id === id) && matches(i.reference),
+          )}
           columns={[
-            { label: "Invoice", render: (i) => <strong>{i.reference}</strong> },
+            {
+              label: "Invoice",
+              render: (i) => (
+                <>
+                  <strong>{i.reference}</strong>
+                  {data.shipments.some((s) => s._id === i.shipmentId) && (
+                    <Link
+                      className="mt-1 block text-xs text-teal-800 underline"
+                      href={href("shipments", { id: i.shipmentId })}
+                    >
+                      View shipment
+                    </Link>
+                  )}
+                </>
+              ),
+            },
             { label: "Total", render: (i) => money(i.total, i.currency) },
             { label: "Paid", render: (i) => money(i.paid, i.currency) },
             {
@@ -706,8 +1002,7 @@ export function ClientWorkspace({
         />
       )}
       <p className="pt-3 text-[10px] leading-5 text-slate-600">
-        Freight Operations · Fictional demonstration · Client visibility is
-        enforced by the backend · No real bookings or payments
+        Freight Operations · Demonstration · No live bookings or payments
       </p>
     </div>
   );

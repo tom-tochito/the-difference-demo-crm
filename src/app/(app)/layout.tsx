@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Authenticated,
-  AuthLoading,
-  Unauthenticated,
-} from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/app-shell";
 
@@ -18,11 +14,7 @@ function RedirectToLogin() {
   return null;
 }
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <AuthLoading>
@@ -44,7 +36,9 @@ export default function AppLayout({
         <RedirectToLogin />
       </Unauthenticated>
       <Authenticated>
-        <AppShell>{children}</AppShell>
+        <Suspense fallback={<div className="p-8">Opening workspace…</div>}>
+          <AppShell>{children}</AppShell>
+        </Suspense>
       </Authenticated>
     </>
   );
