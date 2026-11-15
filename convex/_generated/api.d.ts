@@ -16,7 +16,6 @@ import type * as demoFixtures from "../demoFixtures.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as platform from "../platform.js";
-import type * as retireLegacy from "../retireLegacy.js";
 import type * as savings from "../savings.js";
 import type * as shipping from "../shipping.js";
 import type * as shippingModel from "../shippingModel.js";
@@ -38,7 +37,6 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/auth": typeof lib_auth;
   platform: typeof platform;
-  retireLegacy: typeof retireLegacy;
   savings: typeof savings;
   shipping: typeof shipping;
   shippingModel: typeof shippingModel;

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { verifiedLegacyIndexHeaders } from "./legacy-index-guard.mjs";
 import { createHash } from "node:crypto";
 import process from "node:process";
 import { URL } from "node:url";
@@ -116,8 +117,11 @@ function runConvexDryRun() {
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 
-  const dangerousLines = `${result.stdout ?? ""}\n${result.stderr ?? ""}`
-    .split("\n")
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.replace(/\x1b\[[0-9;]*m/g, "");
+  const lines = output.split("\n");
+  const verifiedIndexHeaders = verifiedLegacyIndexHeaders(lines);
+  const dangerousLines = lines
+    .filter((_, index) => !verifiedIndexHeaders.has(index))
     .filter((line) => !/\bno destructive\b/i.test(line))
     .filter((line) =>
       /\b(?:delete|drop|remove)(?:d|s|ing)?\b.*\b(?:table|field|document|data)\b|\bdata loss\b|\bdestructive change\b/i.test(
@@ -131,6 +135,7 @@ function runConvexDryRun() {
     );
   }
 }
+
 
 function run(command, args) {
   const result = spawnSync(command, args, {

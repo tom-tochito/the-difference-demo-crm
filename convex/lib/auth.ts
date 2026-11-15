@@ -17,7 +17,7 @@ export async function requireUser(
   return user;
 }
 
-export async function requireAdmin(
+export async function requireSuperadmin(
   ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users">> {
   const user = await requireUser(ctx);

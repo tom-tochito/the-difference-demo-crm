@@ -3,7 +3,7 @@ import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { seedFeatures } from "./demoFixtures";
-import { requireAdmin } from "./lib/auth";
+import { requireSuperadmin } from "./lib/auth";
 import {
   DAY,
   STAGES,
@@ -389,7 +389,7 @@ export const initialize = internalMutation({
 export const reset = mutation({
   args: { confirmation: v.string() },
   handler: async (ctx, { confirmation }) => {
-    await requireAdmin(ctx);
+    await requireSuperadmin(ctx);
     if (confirmation !== "RESET SHIPPING")
       throw new ConvexError("Type RESET SHIPPING to confirm.");
     const previousCompanies = await ctx.db

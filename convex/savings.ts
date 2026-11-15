@@ -1,6 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { requireUser, requireAdmin } from "./lib/auth";
+import { requireUser, requireSuperadmin } from "./lib/auth";
 import { reference, activity } from "./shipping";
 import { DAY } from "./shippingModel";
 export function comparison(baseline: number, price: number) {
@@ -246,7 +246,7 @@ export const sources = query({
 export const refresh = mutation({
   args: { id: v.id("shippingSources"), expectedRevision: v.number() },
   handler: async (ctx, a) => {
-    await requireAdmin(ctx);
+    await requireSuperadmin(ctx);
     const s = await ctx.db.get("shippingSources", a.id);
     if (!s) throw new ConvexError("Source not found.");
     if (s.revision !== a.expectedRevision) return s.revision;

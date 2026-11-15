@@ -287,15 +287,6 @@ describe("Freight operations", () => {
         types: ["Packing list"],
       }),
     ).rejects.toThrow("Superadmin");
-    const legacyId = await t.run((ctx) =>
-      ctx.db.insert("records", {
-        entityTypeKey: "contact",
-        name: "Keep charity",
-        fields: {},
-        searchText: "keep",
-        createdBy: uid,
-      }),
-    );
     const d = await admin.query(api.shipping.overview, { now: Date.now() });
     const q = d.quotes.find((q) => q.stage === "Won")!;
     const {
@@ -321,9 +312,6 @@ describe("Freight operations", () => {
     await admin.mutation(api.shippingSeed.reset, {
       confirmation: "RESET SHIPPING",
     });
-    expect(
-      await t.run((ctx) => ctx.db.get("records", legacyId)),
-    ).not.toBeNull();
     expect(await t.run((ctx) => ctx.db.get("users", uid))).not.toBeNull();
     const after = await admin.query(api.shipping.overview, {
       now: Date.now() + DAY,
