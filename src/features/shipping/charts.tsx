@@ -48,7 +48,7 @@ export function VolumeChart() {
               fontSize={11}
             />
             <Tooltip />
-            <Bar dataKey="Sea" stackId="a" fill="#6366f1" />
+            <Bar dataKey="Sea" stackId="a" fill="#0f766e" />
             <Bar dataKey="Air" stackId="a" fill="#a5b4fc" />
             <Bar
               dataKey="Road"
@@ -102,7 +102,7 @@ export function RevenueChart({ currency }: { currency: string }) {
             />
             <YAxis axisLine={false} tickLine={false} fontSize={10} width={48} />
             <Tooltip formatter={(v) => money(Number(v) * 100, currency)} />
-            <Bar dataKey="Revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Revenue" fill="#0f766e" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

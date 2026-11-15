@@ -11,7 +11,7 @@ async function setup() {
   const uid = await t.run((ctx) =>
     ctx.db.insert("users", {
       name: "Test operator",
-      role: "admin",
+      role: "superadmin",
       email: "test@example.com",
     }),
   );
@@ -121,6 +121,11 @@ describe("Freight operations", () => {
       admin.mutation(api.shipping.planShipment, { id: bid }),
     ]);
     expect(sid).toBe(sid2);
+    expect(
+      (
+        await admin.query(api.shipping.overview, { now: Date.now() })
+      ).shipments.find((s) => s._id === sid)?.milestones[0].actual,
+    ).toBeLessThanOrEqual(Date.now());
     await expect(
       admin.mutation(api.shipping.createBooking, {
         id: bid,
@@ -275,13 +280,13 @@ describe("Freight operations", () => {
     const user = t.withIdentity({ subject: `${userId}|session` });
     await expect(
       user.mutation(api.shippingSeed.reset, { confirmation: "RESET SHIPPING" }),
-    ).rejects.toThrow("Admin");
+    ).rejects.toThrow("Superadmin");
     await expect(
       user.mutation(api.shipping.setRequirements, {
         mode: "sea",
         types: ["Packing list"],
       }),
-    ).rejects.toThrow("Admin");
+    ).rejects.toThrow("Superadmin");
     const legacyId = await t.run((ctx) =>
       ctx.db.insert("records", {
         entityTypeKey: "contact",

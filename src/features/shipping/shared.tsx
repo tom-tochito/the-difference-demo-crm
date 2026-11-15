@@ -86,7 +86,7 @@ export function readiness(data: Data, s: Doc<"shippingShipments">) {
   };
 }
 export const inputClass =
-  "h-10 w-full min-w-0 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500";
+  "h-10 w-full min-w-0 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-teal-500";
 export function Select({
   label,
   value,
@@ -126,7 +126,7 @@ export function Badge({ children }: { children: ReactNode }) {
       ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
       : /Draft|Planning|New|Low/i.test(s)
         ? "bg-zinc-100 text-zinc-600 ring-zinc-200"
-        : "bg-indigo-50 text-indigo-700 ring-indigo-100";
+        : "bg-teal-50 text-teal-700 ring-teal-100";
   return (
     <span
       className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset ${color}`}
@@ -224,7 +224,7 @@ export function RecordLink({
 }) {
   return (
     <Link
-      className="font-medium text-indigo-700 hover:underline"
+      className="font-medium text-teal-700 hover:underline"
       href={`/shipping/${section}?id=${encodeURIComponent(id)}`}
     >
       {children}
@@ -245,8 +245,8 @@ export function RouteVisual({
   status: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-[#242334] p-6 text-white">
-      <div className="flex justify-between text-xs text-indigo-200">
+    <div className="overflow-hidden rounded-xl bg-[#132b39] p-6 text-white">
+      <div className="flex justify-between text-xs text-teal-200">
         <Mode mode={mode} />
         <span>{status}</span>
       </div>
@@ -258,7 +258,7 @@ export function RouteVisual({
       >
         <defs>
           <linearGradient id="route-line">
-            <stop stopColor="#818cf8" />
+            <stop stopColor="#2a8b82" />
             <stop offset="1" stopColor="#6ee7b7" />
           </linearGradient>
         </defs>
@@ -269,7 +269,7 @@ export function RouteVisual({
           strokeWidth="2"
           strokeDasharray="5 6"
         />
-        <circle cx="25" cy="70" r="6" fill="#818cf8" />
+        <circle cx="25" cy="70" r="6" fill="#2a8b82" />
         <circle cx="575" cy="70" r="6" fill="#6ee7b7" />
         {stops && <circle cx="300" cy="12" r="5" fill="#d4d4d8" />}
       </svg>
@@ -447,7 +447,7 @@ export function DocumentDownload({
   const url = useQuery(api.shipping.documentUrl, { id });
   return url ? (
     <a
-      className="text-sm font-medium text-indigo-700 underline"
+      className="text-sm font-medium text-teal-700 underline"
       href={url}
       target="_blank"
       rel="noreferrer"

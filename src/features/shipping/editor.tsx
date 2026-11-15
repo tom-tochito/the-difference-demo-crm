@@ -372,7 +372,7 @@ export function Editor({
         label: "Visibility",
         options: [
           { value: "false", label: "Internal" },
-          { value: "true", label: "Share approved document with customer" },
+          { value: "true", label: "Share document with customer" },
         ],
       },
       {

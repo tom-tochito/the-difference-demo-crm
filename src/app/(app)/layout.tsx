@@ -27,7 +27,7 @@ export default function AppLayout({
     <>
       <AuthLoading>
         <div className="flex min-h-dvh flex-1 bg-zinc-100">
-          <div className="hidden w-56 bg-[#1c1b27] lg:block" />
+          <div className="hidden w-56 bg-[#101f2c] lg:block" />
           <div className="flex-1 space-y-4 p-4 sm:p-8">
             <Skeleton className="h-8 w-48" />
             <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">

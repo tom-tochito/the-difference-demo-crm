@@ -34,10 +34,94 @@ export const systemMappingValidator = v.union(
   v.literal("parentId"),
 );
 
-export const roleValidator = v.union(v.literal("admin"), v.literal("user"));
+export const roleValidator = v.union(
+  v.literal("superadmin"),
+  v.literal("admin"),
+  v.literal("user"),
+);
 
 export default defineSchema({
   ...authTables,
+  shippingAssignments: defineTable({
+    customerId: v.id("shippingCompanies"),
+    userId: v.id("users"),
+    entityId: v.string(),
+    kind: v.union(
+      v.literal("shipment"),
+      v.literal("enquiry"),
+      v.literal("quote"),
+    ),
+  })
+    .index("by_user", ["userId"])
+    .index("by_customer", ["customerId"]),
+  shippingUploadGrants: defineTable({
+    userId: v.id("users"),
+    documentId: v.id("shippingDocuments"),
+    expiresAt: v.number(),
+    used: v.boolean(),
+  }).index("by_user", ["userId"]),
+  shippingSources: defineTable({
+    key: v.string(),
+    name: v.string(),
+    category: v.string(),
+    coverage: v.string(),
+    provenance: v.string(),
+    observedAt: v.number(),
+    validUntil: v.number(),
+    revision: v.number(),
+  }).index("by_key", ["key"]),
+  shippingSourceEvents: defineTable({
+    sourceId: v.id("shippingSources"),
+    happenedAt: v.number(),
+    revision: v.number(),
+    message: v.string(),
+  }).index("by_source", ["sourceId"]),
+  shippingScenarios: defineTable({
+    key: v.string(),
+    customerId: v.id("shippingCompanies"),
+    title: v.string(),
+    description: v.string(),
+    origin: v.string(),
+    destination: v.string(),
+    cargo: v.string(),
+    currency: v.union(v.literal("GBP"), v.literal("EUR"), v.literal("USD")),
+    sourceId: v.id("shippingSources"),
+    baseline: v.array(v.object({ label: v.string(), amountMinor: v.number() })),
+    options: v.array(
+      v.object({
+        label: v.string(),
+        mode: v.union(v.literal("sea"), v.literal("air"), v.literal("road")),
+        days: v.number(),
+        freightMinor: v.number(),
+        handlingMinor: v.number(),
+        feeMinor: v.number(),
+        supplierMinor: v.number(),
+      }),
+    ),
+  })
+    .index("by_customer", ["customerId"])
+    .index("by_key", ["key"]),
+  shippingComparisons: defineTable({
+    customerId: v.id("shippingCompanies"),
+    scenarioId: v.id("shippingScenarios"),
+    optionIndex: v.number(),
+    enquiryId: v.id("shippingEnquiries"),
+    baselineMinor: v.number(),
+    priceMinor: v.number(),
+    savingMinor: v.number(),
+    currency: v.string(),
+    sourceRevision: v.number(),
+    observedAt: v.number(),
+    requestedBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_customer", ["customerId"])
+    .index("by_enquiry", ["enquiryId"]),
+  platformMigrations: defineTable({
+    key: v.string(),
+    completedAt: v.number(),
+    detail: v.string(),
+  }).index("by_key", ["key"]),
   shippingCompanies: defineTable(companyV).index("by_name", ["name"]),
   shippingContacts: defineTable({
     customerId: v.id("shippingCompanies"),
@@ -93,7 +177,9 @@ export default defineSchema({
     updatedAt: v.number(),
     storageId: v.optional(v.id("_storage")),
     filename: v.optional(v.string()),
-  }).index("by_shipmentId", ["shipmentId"]),
+  })
+    .index("by_shipmentId", ["shipmentId"])
+    .index("by_storageId", ["storageId"]),
   shippingTasks: defineTable({
     customerId: v.optional(v.id("shippingCompanies")),
     shipmentId: v.optional(v.id("shippingShipments")),
@@ -101,11 +187,13 @@ export default defineSchema({
     assignee: v.string(),
     priority: v.union(v.literal("Low"), v.literal("Normal"), v.literal("High")),
     dueAt: v.number(),
+    assignedUserId: v.optional(v.id("users")),
     done: v.boolean(),
     resolution: v.string(),
   })
     .index("by_shipmentId", ["shipmentId"])
-    .index("by_done_and_dueAt", ["done", "dueAt"]),
+    .index("by_done_and_dueAt", ["done", "dueAt"])
+    .index("by_customerId", ["customerId"]),
   shippingExceptions: defineTable({
     shipmentId: v.id("shippingShipments"),
     title: v.string(),
@@ -165,10 +253,13 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     role: v.optional(roleValidator),
+    customerId: v.optional(v.id("shippingCompanies")),
+    disabled: v.optional(v.boolean()),
     team: v.optional(v.string()),
   })
     .index("email", ["email"])
-    .index("phone", ["phone"]),
+    .index("phone", ["phone"])
+    .index("by_customer", ["customerId"]),
 
   entityTypes: defineTable({
     key: v.string(),

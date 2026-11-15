@@ -55,9 +55,9 @@ export function PrintPreview({
           </DialogDescription>
         </DialogHeader>
         <div className="print-sheet space-y-7 bg-white p-3 text-zinc-900">
-          <div className="flex justify-between border-b-2 border-indigo-600 pb-5">
+          <div className="flex justify-between border-b-2 border-teal-600 pb-5">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-widest text-indigo-600">
+              <p className="text-sm font-semibold uppercase tracking-widest text-teal-600">
                 Freight Operations
               </p>
               <h2 className="mt-2 text-3xl font-semibold">{request.type}</h2>
@@ -173,7 +173,7 @@ export function PrintPreview({
             body { font-family: Arial, sans-serif; color: #18181b; margin: 0 auto; max-width: 800px; padding: 24px; line-height: 1.5; }
             h2 { font-size: 28px; margin: 8px 0; } p { margin: 6px 0; }
             .print-sheet > * + * { margin-top: 24px; }
-            .print-sheet > div:first-child { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #4f46e5; padding-bottom: 20px; }
+            .print-sheet > div:first-child { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #0f766e; padding-bottom: 20px; }
             .print-sheet > div:nth-of-type(2) { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
             .print-sheet > p:first-of-type { border: 2px solid #fecdd3; color: #be123c; font-weight: 700; text-align: center; padding: 12px; }
             .print-sheet > p:last-child { font-size: 11px; color: #52525b; border-top: 1px solid #ddd; padding-top: 12px; }

@@ -8,22 +8,19 @@
  * @module
  */
 
-import type * as activities from "../activities.js";
 import type * as auth from "../auth.js";
-import type * as dashboard from "../dashboard.js";
-import type * as entityFields from "../entityFields.js";
-import type * as fundraising from "../fundraising.js";
+import type * as client from "../client.js";
+import type * as clientAccess from "../clientAccess.js";
+import type * as demoAccounts from "../demoAccounts.js";
+import type * as demoFixtures from "../demoFixtures.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
-import type * as lib_constants from "../lib/constants.js";
-import type * as lib_records from "../lib/records.js";
-import type * as records from "../records.js";
-import type * as seed from "../seed.js";
-import type * as seedData from "../seedData.js";
+import type * as platform from "../platform.js";
+import type * as retireLegacy from "../retireLegacy.js";
+import type * as savings from "../savings.js";
 import type * as shipping from "../shipping.js";
 import type * as shippingModel from "../shippingModel.js";
 import type * as shippingSeed from "../shippingSeed.js";
-import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
 import type {
@@ -33,22 +30,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  activities: typeof activities;
   auth: typeof auth;
-  dashboard: typeof dashboard;
-  entityFields: typeof entityFields;
-  fundraising: typeof fundraising;
+  client: typeof client;
+  clientAccess: typeof clientAccess;
+  demoAccounts: typeof demoAccounts;
+  demoFixtures: typeof demoFixtures;
   http: typeof http;
   "lib/auth": typeof lib_auth;
-  "lib/constants": typeof lib_constants;
-  "lib/records": typeof lib_records;
-  records: typeof records;
-  seed: typeof seed;
-  seedData: typeof seedData;
+  platform: typeof platform;
+  retireLegacy: typeof retireLegacy;
+  savings: typeof savings;
   shipping: typeof shipping;
   shippingModel: typeof shippingModel;
   shippingSeed: typeof shippingSeed;
-  tasks: typeof tasks;
   users: typeof users;
 }>;
 

@@ -11,7 +11,7 @@ export async function requireUser(
     throw new ConvexError("Not signed in.");
   }
   const user = await ctx.db.get("users", userId);
-  if (user === null) {
+  if (user === null || user.disabled) {
     throw new ConvexError("User record not found.");
   }
   return user;
@@ -21,8 +21,8 @@ export async function requireAdmin(
   ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users">> {
   const user = await requireUser(ctx);
-  if (user.role !== "admin") {
-    throw new ConvexError("Admin access required.");
+  if (user.role !== "superadmin") {
+    throw new ConvexError("Superadmin access required.");
   }
   return user;
 }

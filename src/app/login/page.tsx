@@ -1,116 +1,168 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useConvexAuth } from "convex/react";
-import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { ShieldCheck, User, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Compass,
+  ArrowUpRight,
+  ArrowRight,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "../../../convex/demoAccounts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
-const DEMO_PASSWORD = "demo2026!";
-
-const DEMO_ACCOUNTS = [
-  {
-    key: "admin",
-    email: "admin@demo.thedifference.org",
-    label: "Sign in as Admin",
-    description: "Full access — can edit entity fields like a CMS",
-    icon: ShieldCheck,
-  },
-  {
-    key: "user",
-    email: "user@demo.thedifference.org",
-    label: "Sign in as User",
-    description: "Standard access — browse and edit records",
-    icon: User,
-  },
-] as const;
-
-export default function LoginPage() {
+export default function Login() {
   const { signIn } = useAuthActions();
-  const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
+  const router = useRouter();
+  const [pending, setPending] = useState("");
   useEffect(() => {
-    if (isAuthenticated) router.replace("/workspaces");
+    if (isAuthenticated) router.replace("/shipping");
   }, [isAuthenticated, router]);
-  const [pending, setPending] = useState<string | null>(null);
-
-  const handleSignIn = async (email: string, key: string) => {
-    setPending(key);
+  async function login(email: string, password = DEMO_PASSWORD) {
+    setPending(email);
     try {
-      await signIn("password", {
-        email,
-        password: DEMO_PASSWORD,
-        flow: "signIn",
-      });
-      // Navigate only after Convex confirms the token on the reactive connection.
+      await signIn("password", { email, password, flow: "signIn" });
     } catch {
-      toast.error("Sign-in failed. Has the demo data been seeded?");
-      setPending(null);
+      toast.error("Sign-in failed. Check your demo credentials.");
+      setPending("");
     }
-  };
-
+  }
   return (
-    <div className="relative flex min-h-dvh flex-1 items-center justify-center overflow-hidden bg-[#1c1b27] p-6">
-      {/* Atmosphere: soft indigo glows + faint grid, matching the sidebar tone */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(600px 400px at 20% 10%, oklch(0.45 0.18 275 / 0.25), transparent 70%), radial-gradient(500px 380px at 85% 85%, oklch(0.5 0.15 300 / 0.18), transparent 70%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-      <div className="rise-children relative w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-zinc-400">
-            Connected workspaces
+    <div className="grid min-h-dvh w-full bg-[#f6f7f5] lg:grid-cols-[1.05fr_1fr]">
+      <div className="relative flex flex-col justify-between overflow-hidden bg-[#101f2c] px-8 py-10 text-white sm:px-14 lg:py-14">
+        <div className="flex items-center gap-3 text-lg font-medium">
+          <Compass className="size-8 text-teal-300" />
+          Freight Operations
+        </div>
+        <div className="relative z-10 my-14 max-w-lg">
+          <p className="mb-7 text-[10px] uppercase tracking-[.3em] text-teal-200">
+            Intelligent freight. Measurable value.
           </p>
-          <h1 className="mt-1 text-3xl font-bold text-white">
-            Your operations, connected
+          <h1 className="text-5xl font-medium leading-[1.08] tracking-[-.04em] sm:text-6xl">
+            Move goods.
+            <br />
+            Keep more
+            <br />
+            <span className="text-teal-200">of the value.</span>
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Charity CRM · Freight Operations
+          <p className="mt-7 max-w-sm text-sm leading-7 text-slate-300">
+            A connected workspace for better freight decisions. Compare costs,
+            coordinate shipments and turn operational insight into customer
+            savings.
           </p>
+          <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/15 pt-6 text-xs">
+            <span>
+              Cost clarity
+              <ArrowUpRight className="mt-3 size-4 text-teal-200" />
+            </span>
+            <span>
+              Client control
+              <ShieldCheck className="mt-3 size-4 text-teal-200" />
+            </span>
+            <span>
+              Connected work
+              <Compass className="mt-3 size-4 text-teal-200" />
+            </span>
+          </div>
         </div>
-        <div className="space-y-3">
-          {DEMO_ACCOUNTS.map((account) => (
-            <Button
-              key={account.key}
-              onClick={() => handleSignIn(account.email, account.key)}
-              disabled={pending !== null}
-              className="h-auto w-full justify-start gap-3 rounded-xl bg-white/95 px-4 py-3 text-left text-zinc-900 transition-transform hover:-translate-y-0.5 hover:bg-white"
-            >
-              {pending === account.key ? (
-                <Loader2 className="size-5 shrink-0 animate-spin" />
-              ) : (
-                <account.icon className="size-5 shrink-0 text-indigo-600" />
-              )}
-              <span className="flex flex-col">
-                <span className="font-semibold">{account.label}</span>
-                <span className="text-xs font-normal text-zinc-500">
-                  {account.description}
-                </span>
-              </span>
-            </Button>
-          ))}
-        </div>
-        <p className="mt-6 text-center text-xs text-zinc-400">
-          One-click demo accounts · password{" "}
-          <code className="rounded bg-white/10 px-1 py-0.5">
-            {DEMO_PASSWORD}
-          </code>
+        <p className="text-[10px] leading-5 text-slate-400">
+          Interactive demonstration · Fictional data and public demo
+          credentials.
+          <br />
+          No live rates, bookings or financial transactions.
         </p>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-36 top-28 size-[500px] rounded-full border border-white/5"
+        >
+          <div className="m-16 size-[360px] rounded-full border border-white/5" />
+        </div>
+      </div>
+      <div className="flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md">
+          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-teal-700">
+            Explore the platform
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+            Choose your perspective.
+          </h2>
+          <p className="mt-3 mb-8 text-sm leading-6 text-slate-600">
+            Each account has its own permissions and workspace. Explore the
+            platform team or step into an importer’s day.
+          </p>
+          {["", "Alder & Finch Exports", "Northstar Ceramics"].map(
+            (company) => (
+              <div
+                className="mb-4 rounded-xl border border-slate-200 bg-white p-4"
+                key={company}
+              >
+                <p className="mb-3 text-xs font-semibold text-slate-700">
+                  {company || "Platform team"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {DEMO_ACCOUNTS.filter((a) => a.company === company).map(
+                    (a) => (
+                      <Button
+                        key={a.email}
+                        variant={
+                          a.role === "superadmin" ? "default" : "outline"
+                        }
+                        size="sm"
+                        disabled={!!pending}
+                        onClick={() => login(a.email)}
+                        aria-label={a.label}
+                      >
+                        {pending === a.email ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : a.role === "superadmin" ? (
+                          "Superadmin"
+                        ) : (
+                          a.label.split(" · ")[1]
+                        )}
+                        <ArrowRight className="size-3" />
+                      </Button>
+                    ),
+                  )}
+                </div>
+              </div>
+            ),
+          )}
+          <details className="mt-6 text-xs text-slate-600">
+            <summary className="cursor-pointer">
+              Sign in with another demo account
+            </summary>
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                login(String(f.get("email")), String(f.get("password")));
+              }}
+            >
+              <input
+                className="h-10 w-full rounded border bg-white px-3"
+                name="email"
+                type="email"
+                aria-label="Email"
+                placeholder="you@company.example"
+                required
+              />
+              <input
+                className="h-10 w-full rounded border bg-white px-3"
+                name="password"
+                type="password"
+                aria-label="Password"
+                required
+                placeholder="Demo password"
+              />
+              <Button disabled={!!pending}>Sign in</Button>
+            </form>
+            <p className="mt-3">Demo password: {DEMO_PASSWORD}</p>
+          </details>
+        </div>
       </div>
     </div>
   );

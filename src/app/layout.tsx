@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Connected Workspaces — CRM & Freight",
-  description: "The Difference charity CRM and Freight Operations shipping demo",
+  title: "Freight Operations — Intelligent Freight",
+  description: "Importer savings, connected freight operations and isolated client workspaces.",
 };
 
 export default function RootLayout({

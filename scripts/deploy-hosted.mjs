@@ -33,7 +33,7 @@ run("pnpm", [
   "enable",
 ]);
 
-run("pnpm", ["exec", "convex", "run", "shippingSeed:initialize"]);
+run("pnpm", ["exec", "convex", "run", "platform:initialize"]);
 run("pnpm", ["run", "build:worker"]);
 
 function requireConvexUrl(name, value, suffix) {

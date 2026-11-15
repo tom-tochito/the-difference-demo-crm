@@ -2,6 +2,7 @@ import { internalMutation, mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
+import { seedFeatures } from "./demoFixtures";
 import { requireAdmin } from "./lib/auth";
 import {
   DAY,
@@ -391,7 +392,17 @@ export const reset = mutation({
     await requireAdmin(ctx);
     if (confirmation !== "RESET SHIPPING")
       throw new ConvexError("Type RESET SHIPPING to confirm.");
+    const previousCompanies = await ctx.db
+      .query("shippingCompanies")
+      .take(2000);
+    const previousUsers = await ctx.db.query("users").take(500);
     const tables = [
+      "shippingUploadGrants",
+      "shippingAssignments",
+      "shippingComparisons",
+      "shippingScenarios",
+      "shippingSourceEvents",
+      "shippingSources",
       "shippingPayments",
       "shippingInvoices",
       "shippingActivities",
@@ -419,6 +430,36 @@ export const reset = mutation({
       if (d.storageId) await ctx.storage.delete(d.storageId);
     for (let i = 0; i < tables.length; i++)
       for (const row of groups[i]) await ctx.db.delete(tables[i], row._id);
-    return await seedShipping(ctx, Date.now());
+    await seedShipping(ctx, Date.now());
+    const nextCompanies = await ctx.db.query("shippingCompanies").take(2000);
+    for (const u of previousUsers)
+      if (u.customerId) {
+        const name = previousCompanies.find(
+          (c) => c._id === u.customerId,
+        )?.name;
+        let next = nextCompanies.find((c) => c.name === name);
+        if (!next) {
+          const previous = previousCompanies.find(
+            (c) => c._id === u.customerId,
+          );
+          if (previous) {
+            const { _id, _creationTime, ...fields } = previous;
+            void _id;
+            void _creationTime;
+            const id = await ctx.db.insert("shippingCompanies", fields);
+            next = (await ctx.db.get("shippingCompanies", id))!;
+            nextCompanies.push(next);
+          }
+        }
+        await ctx.db.patch("users", u._id, { customerId: next?._id });
+      }
+    const assignmentsMarker = await ctx.db
+      .query("platformMigrations")
+      .withIndex("by_key", (q) => q.eq("key", "initial-assignments-v2"))
+      .unique();
+    if (assignmentsMarker)
+      await ctx.db.delete("platformMigrations", assignmentsMarker._id);
+    await seedFeatures(ctx);
+    return "Freight demo reset; accounts retained.";
   },
 });

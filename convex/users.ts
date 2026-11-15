@@ -9,7 +9,11 @@ export const currentUser = query({
       return null;
     }
     const user = await ctx.db.get("users", userId);
-    if (user === null) {
+    if (
+      user === null ||
+      user.disabled ||
+      (user.role !== "superadmin" && !user.customerId)
+    ) {
       return null;
     }
     return {
@@ -18,6 +22,10 @@ export const currentUser = query({
       email: user.email,
       role: user.role ?? "user",
       team: user.team,
+      customerId: user.customerId,
+      company: user.customerId
+        ? (await ctx.db.get("shippingCompanies", user.customerId))?.name
+        : undefined,
     };
   },
 });

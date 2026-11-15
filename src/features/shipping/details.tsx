@@ -46,7 +46,7 @@ export function ShipmentDetail({
     <div className="space-y-6">
       <Link
         href="/shipping/shipments"
-        className="text-sm text-zinc-600 hover:text-indigo-600"
+        className="text-sm text-zinc-600 hover:text-teal-600"
       >
         ← Shipment register
       </Link>
@@ -156,7 +156,7 @@ export function ShipmentDetail({
             }}
             key={t}
             onClick={() => setTab(t)}
-            className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm ${tab === t ? "border-indigo-600 font-semibold text-indigo-700" : "border-transparent text-zinc-600"}`}
+            className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm ${tab === t ? "border-teal-600 font-semibold text-teal-700" : "border-transparent text-zinc-600"}`}
           >
             {t}
           </button>
@@ -626,13 +626,13 @@ export function CustomerDetail({
         </div>
         <div className="mt-6 flex gap-3 border-t pt-4 text-sm">
           <Link
-            className="text-indigo-700 underline"
+            className="text-teal-700 underline"
             href={`/shipping/documents?customer=${c._id}`}
           >
             Customer documents
           </Link>
           <Link
-            className="text-indigo-700 underline"
+            className="text-teal-700 underline"
             href={`/shipping/tasks?customer=${c._id}`}
           >
             Customer tasks

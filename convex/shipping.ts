@@ -2,7 +2,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { requireAdmin, requireUser } from "./lib/auth";
+import { requireAdmin } from "./lib/auth";
 import {
   companyV,
   quoteV,
@@ -134,7 +134,7 @@ export async function createChecklist(
 export const overview = query({
   args: { now: v.number() },
   handler: async (ctx, { now }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const tables = [
       "shippingCompanies",
       "shippingContacts",
@@ -227,7 +227,7 @@ export const overview = query({
 export const saveCompany = mutation({
   args: { id: v.optional(v.id("shippingCompanies")), data: companyV },
   handler: async (ctx, { id, data }) => {
-    const user = await requireUser(ctx);
+    const user = await requireAdmin(ctx);
     text(data.name, "Company name");
     text(data.country, "Country");
     finite(data.paymentDays, "Payment terms");
@@ -256,7 +256,7 @@ export const saveContact = mutation({
     title: v.string(),
   },
   handler: async (ctx, { id, ...data }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     text(data.name, "Contact name");
     if (!(await ctx.db.get("shippingCompanies", data.customerId)))
       throw new ConvexError("Company not found.");
@@ -274,7 +274,7 @@ export const saveContact = mutation({
 export const saveEnquiry = mutation({
   args: { data: quoteV },
   handler: async (ctx, { data }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     await validateRoute(ctx, data);
     validateCharges(data.charges);
     const id = await ctx.db.insert("shippingEnquiries", {
@@ -290,7 +290,7 @@ export const saveEnquiry = mutation({
 export const quoteEnquiry = mutation({
   args: { id: v.id("shippingEnquiries") },
   handler: async (ctx, { id }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const existing = await ctx.db
       .query("shippingQuotes")
       .withIndex("by_enquiryId", (q) => q.eq("enquiryId", id))
@@ -316,7 +316,7 @@ export const quoteEnquiry = mutation({
 export const saveQuote = mutation({
   args: { id: v.optional(v.id("shippingQuotes")), data: quoteV },
   handler: async (ctx, { id, data }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     await validateRoute(ctx, data);
     validateCharges(data.charges);
     finite(data.validity, "Validity date");
@@ -342,7 +342,7 @@ export const saveQuote = mutation({
 export const duplicateQuote = mutation({
   args: { id: v.id("shippingQuotes") },
   handler: async (ctx, { id }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const q = await ctx.db.get("shippingQuotes", id);
     if (!q) throw new ConvexError("Quote not found.");
     const { _id, _creationTime, enquiryId, ...data } = q;
@@ -361,7 +361,7 @@ export const duplicateQuote = mutation({
 export const setQuoteStage = mutation({
   args: { id: v.id("shippingQuotes"), stage: stageV },
   handler: async (ctx, { id, stage }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const q = await ctx.db.get("shippingQuotes", id);
     if (!q) throw new ConvexError("Quote not found.");
     if (q.stage === "Won" || stage === "Won")
@@ -380,55 +380,61 @@ export const setQuoteStage = mutation({
     );
   },
 });
+export async function acceptQuoteTransaction(
+  ctx: MutationCtx,
+  id: Id<"shippingQuotes">,
+) {
+  const existing = await ctx.db
+    .query("shippingBookings")
+    .withIndex("by_quoteId", (q) => q.eq("quoteId", id))
+    .unique();
+  if (existing) return existing._id;
+  const q = await ctx.db.get("shippingQuotes", id);
+  if (!q) throw new ConvexError("Quote not found.");
+  if (q.stage === "Lost" || q.validity < Date.now())
+    throw new ConvexError(
+      "Lost or expired quotes must be duplicated and renewed before acceptance.",
+    );
+  validateCharges(q.charges);
+  const {
+    _id,
+    _creationTime,
+    stage,
+    enquiryId,
+    reference: quoteRef,
+    ...data
+  } = q;
+  void _id;
+  void _creationTime;
+  void stage;
+  const bookingId = await ctx.db.insert("shippingBookings", {
+    ...data,
+    quoteId: id,
+    reference: await reference(ctx, "BKG"),
+    confirmed: false,
+    createdAt: Date.now(),
+  });
+  await ctx.db.patch("shippingQuotes", id, { stage: "Won" });
+  if (enquiryId)
+    await ctx.db.patch("shippingEnquiries", enquiryId, { stage: "Won" });
+  await activity(
+    ctx,
+    `${quoteRef} accepted; booking created with agreed charge snapshot`,
+    q.customerId,
+  );
+  return bookingId;
+}
 export const acceptQuote = mutation({
   args: { id: v.id("shippingQuotes") },
   handler: async (ctx, { id }) => {
-    await requireUser(ctx);
-    const existing = await ctx.db
-      .query("shippingBookings")
-      .withIndex("by_quoteId", (q) => q.eq("quoteId", id))
-      .unique();
-    if (existing) return existing._id;
-    const q = await ctx.db.get("shippingQuotes", id);
-    if (!q) throw new ConvexError("Quote not found.");
-    if (q.stage === "Lost" || q.validity < Date.now())
-      throw new ConvexError(
-        "Lost or expired quotes must be duplicated and renewed before acceptance.",
-      );
-    validateCharges(q.charges);
-    const {
-      _id,
-      _creationTime,
-      stage,
-      enquiryId,
-      reference: quoteRef,
-      ...data
-    } = q;
-    void _id;
-    void _creationTime;
-    void stage;
-    const bookingId = await ctx.db.insert("shippingBookings", {
-      ...data,
-      quoteId: id,
-      reference: await reference(ctx, "BKG"),
-      confirmed: false,
-      createdAt: Date.now(),
-    });
-    await ctx.db.patch("shippingQuotes", id, { stage: "Won" });
-    if (enquiryId)
-      await ctx.db.patch("shippingEnquiries", enquiryId, { stage: "Won" });
-    await activity(
-      ctx,
-      `${quoteRef} accepted; booking created with agreed charge snapshot`,
-      q.customerId,
-    );
-    return bookingId;
+    await requireAdmin(ctx);
+    return acceptQuoteTransaction(ctx, id);
   },
 });
 export const createBooking = mutation({
   args: { id: v.optional(v.id("shippingBookings")), data: quoteV },
   handler: async (ctx, { id: existingId, data }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     await validateRoute(ctx, data);
     validateCharges(data.charges);
     if (existingId) {
@@ -471,7 +477,7 @@ export const createBooking = mutation({
 export const confirmBooking = mutation({
   args: { id: v.id("shippingBookings") },
   handler: async (ctx, { id }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const b = await ctx.db.get("shippingBookings", id);
     if (!b) throw new ConvexError("Booking not found.");
     if (!b.confirmed) {
@@ -487,7 +493,7 @@ export const confirmBooking = mutation({
 export const planShipment = mutation({
   args: { id: v.id("shippingBookings") },
   handler: async (ctx, { id }) => {
-    const user = await requireUser(ctx);
+    const user = await requireAdmin(ctx);
     const existing = await ctx.db
       .query("shippingShipments")
       .withIndex("by_bookingId", (q) => q.eq("bookingId", id))
@@ -529,7 +535,9 @@ export const planShipment = mutation({
       seal: "",
       stops: "",
       status: "Planning",
-      milestones: milestones(b.etd, b.eta),
+      milestones: milestones(b.etd, b.eta).map((m, i) =>
+        i === 0 ? { ...m, actual: Date.now() } : m,
+      ),
       updatedAt: Date.now(),
     });
     await createChecklist(ctx, sid, b.mode, user.name ?? "Operations");
@@ -544,7 +552,7 @@ export const saveShipment = mutation({
     charges: v.array(chargeV),
   },
   handler: async (ctx, { id, data, charges }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     await validateRoute(ctx, data);
     validateCharges(charges);
     if (id) {
@@ -585,7 +593,9 @@ export const saveShipment = mutation({
         charges,
         reference: await reference(ctx, "SHP"),
         status: "Planning",
-        milestones: milestones(data.etd, data.eta),
+        milestones: milestones(data.etd, data.eta).map((m, i) =>
+          i === 0 ? { ...m, actual: Date.now() } : m,
+        ),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
@@ -598,7 +608,7 @@ export const saveShipment = mutation({
 export const advanceShipment = mutation({
   args: { id: v.id("shippingShipments"), expectedStatus: v.string() },
   handler: async (ctx, { id, expectedStatus }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const s = await ship(ctx, id);
     if (s.status !== expectedStatus) return s.status;
     const next = STATUSES.indexOf(s.status as (typeof STATUSES)[number]) + 1;
@@ -629,7 +639,7 @@ export const addNote = mutation({
     public: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const u = await requireUser(ctx);
+    const u = await requireAdmin(ctx);
     text(args.body, "Note");
     let cid = args.customerId;
     if (args.shipmentId) cid = (await ship(ctx, args.shipmentId)).customerId;
@@ -648,7 +658,7 @@ export const addTask = mutation({
     dueAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     text(args.title, "Title");
     text(args.assignee, "Assignee");
     finite(args.dueAt, "Due date");
@@ -675,7 +685,7 @@ export const addTask = mutation({
 export const completeTask = mutation({
   args: { id: v.id("shippingTasks"), resolution: v.string() },
   handler: async (ctx, { id, resolution }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     text(resolution, "Resolution note");
     const t = await ctx.db.get("shippingTasks", id);
     if (!t) throw new ConvexError("Task not found.");
@@ -691,7 +701,7 @@ export const completeTask = mutation({
 export const resolveException = mutation({
   args: { id: v.id("shippingExceptions"), resolution: v.string() },
   handler: async (ctx, { id, resolution }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     text(resolution, "Resolution note");
     const e = await ctx.db.get("shippingExceptions", id);
     if (!e) throw new ConvexError("Exception not found.");
@@ -711,7 +721,7 @@ export const resolveException = mutation({
 export const uploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -727,7 +737,7 @@ export const saveDocument = mutation({
     filename: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...data }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const s = await ship(ctx, data.shipmentId);
     text(data.owner, "Owner");
     if (data.storageId) {
@@ -769,7 +779,7 @@ export const saveDocument = mutation({
 export const documentUrl = query({
   args: { id: v.id("shippingDocuments") },
   handler: async (ctx, { id }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const d = await ctx.db.get("shippingDocuments", id);
     return d?.storageId ? await ctx.storage.getUrl(d.storageId) : null;
   },
@@ -789,7 +799,7 @@ export const setRequirements = mutation({
 export const createInvoice = mutation({
   args: { shipmentId: v.id("shippingShipments") },
   handler: async (ctx, { shipmentId }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const s = await ship(ctx, shipmentId);
     const existing = await ctx.db
       .query("shippingInvoices")
@@ -814,7 +824,7 @@ export const createInvoice = mutation({
 export const issueInvoice = mutation({
   args: { id: v.id("shippingInvoices") },
   handler: async (ctx, { id }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const i = await ctx.db.get("shippingInvoices", id);
     if (!i) throw new ConvexError("Invoice not found.");
     if (i.issued) return;
@@ -838,7 +848,7 @@ export const recordPayment = mutation({
     reference: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const duplicate = await ctx.db
       .query("shippingPayments")
       .withIndex("by_requestId", (q) => q.eq("requestId", args.requestId))
@@ -892,7 +902,7 @@ export const portal = query({
     reference: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const companies = await ctx.db.query("shippingCompanies").take(200);
     const selected = args.customerId ?? companies[0]?._id;
     const rows = selected
@@ -956,7 +966,7 @@ export const portal = query({
 export const search = query({
   args: { text: v.string() },
   handler: async (ctx, { text }) => {
-    await requireUser(ctx);
+    await requireAdmin(ctx);
     const needle = text.toLowerCase();
     const [companies, shipments, quotes] = await Promise.all([
       ctx.db.query("shippingCompanies").take(2000),

@@ -53,12 +53,20 @@ import {
   ShipmentDetail,
 } from "./details";
 import { RevenueChart, VolumeChart } from "./charts";
-import { Portal } from "./portal";
+import { ClientWorkspace } from "./client-workspace";
+import {
+  SavingsStudio,
+  Sources,
+  Team,
+  DemoGuide,
+  ClientPreview,
+  CommercialHero,
+} from "./intelligence";
 
 const titles: Record<string, [string, string]> = {
   overview: [
-    "Operations overview",
-    "Every movement, every milestone. Your export desk at a glance.",
+    "A clearer view of every opportunity.",
+    "Freight intelligence, client relationships and operational control in one place.",
   ],
   customers: [
     "Customers & partners",
@@ -73,7 +81,7 @@ const titles: Record<string, [string, string]> = {
     "Clear pricing, connected opportunities and a visible pipeline.",
   ],
   bookings: [
-    "Export bookings",
+    "Freight bookings",
     "Accepted plans, ready for your operations team.",
   ],
   shipments: ["Shipment register", "One reliable view of every movement."],
@@ -82,7 +90,7 @@ const titles: Record<string, [string, string]> = {
     "Follow each journey from origin to final delivery.",
   ],
   documents: [
-    "Export documents",
+    "Shipping documents",
     "Review, approve and share the paperwork behind every movement.",
   ],
   tasks: [
@@ -104,11 +112,21 @@ const titles: Record<string, [string, string]> = {
 };
 export function ShippingApp({ section }: { section: string }) {
   const now = useClock();
+  const user = useQuery(api.users.currentUser);
+  const extra = ["savings", "sources", "team", "guide", "portal"].includes(
+    section,
+  );
   const data = useQuery(
     api.shipping.overview,
-    section === "portal" ? "skip" : { now },
+    user?.role === "superadmin" && !extra ? { now } : "skip",
   );
-  if (section === "portal") return <Portal />;
+  if (!user) return <div className="p-10">Opening workspace…</div>;
+  if (section === "savings") return <SavingsStudio />;
+  if (section === "sources") return <Sources />;
+  if (section === "team") return <Team />;
+  if (section === "guide") return <DemoGuide />;
+  if (user.role !== "superadmin") return <ClientWorkspace section={section} />;
+  if (section === "portal") return <ClientPreview />;
   if (!data)
     return (
       <div className="space-y-6 p-8">
@@ -222,6 +240,7 @@ function Workspace({ section }: { section: string }) {
   else if (section === "overview")
     content = (
       <div className="space-y-6">
+        <CommercialHero />
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
           {[
             {
@@ -259,11 +278,11 @@ function Workspace({ section }: { section: string }) {
             <Link
               key={stat.label}
               href={stat.href}
-              className="group rounded-xl border bg-white p-5 shadow-sm transition hover:border-indigo-300"
+              className="group rounded-xl border bg-white p-5 shadow-sm transition hover:border-teal-300"
             >
               <div className="flex justify-between text-zinc-600">
                 <stat.icon className="size-4" />
-                <ArrowUpRight className="size-3 group-hover:text-indigo-600" />
+                <ArrowUpRight className="size-3 group-hover:text-teal-600" />
               </div>
               <p className="mt-5 text-3xl font-semibold tracking-tight">
                 {stat.value}
@@ -277,7 +296,7 @@ function Workspace({ section }: { section: string }) {
             title="Attention needed"
             action={
               <Link
-                className="text-xs font-medium text-indigo-600"
+                className="text-xs font-medium text-teal-600"
                 href="/shipping/tasks"
               >
                 View operations →
@@ -586,7 +605,7 @@ function Workspace({ section }: { section: string }) {
                         key={q._id}
                         className="block rounded-lg border bg-white p-3 shadow-sm"
                       >
-                        <p className="text-xs font-semibold text-indigo-700">
+                        <p className="text-xs font-semibold text-teal-700">
                           {q.reference}
                         </p>
                         <p className="mt-2 text-sm">
@@ -1632,7 +1651,7 @@ function Settings() {
     ...data.settings.requirements.sea,
   ]);
   const [confirmation, setConfirmation] = useState("");
-  if (user?.role !== "admin")
+  if (user?.role !== "superadmin")
     return <Empty>Administrator access is required.</Empty>;
   return (
     <div className="space-y-5">
@@ -1683,9 +1702,9 @@ function Settings() {
       <Panel title="Reset freight demo">
         <p className="text-sm leading-6 text-zinc-600">
           Reset deletes freight records, edits and attachments, then restores
-          the connected sample dataset with dates relative to today. Charity
-          records and login accounts remain unchanged. This affects everyone
-          using this demo backend.
+          the connected sample dataset with dates relative to today. Login
+          accounts remain available and client assignments are restored. This
+          affects everyone using this demo backend.
         </p>
         <label className="mt-5 block max-w-sm space-y-2 text-sm">
           Type RESET SHIPPING to confirm
