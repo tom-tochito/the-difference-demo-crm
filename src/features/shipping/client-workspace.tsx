@@ -512,7 +512,7 @@ export function ClientWorkspace({
             />
           )}
           <RouteVisual {...s} />
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
             <Panel
               title="Journey milestones"
               action={<PackageCheck className="size-4 text-teal-700" />}
@@ -522,7 +522,7 @@ export function ClientWorkspace({
                 Last update {date(s.updatedAt)} · Simulated tracking
               </p>
             </Panel>
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               <Panel
                 title="Documents & readiness"
                 action={<FileCheck2 className="size-4 text-teal-700" />}
@@ -558,11 +558,11 @@ export function ClientWorkspace({
                       onChange={setDocType}
                       options={[...DOCUMENT_TYPES]}
                     />
-                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-teal-300 bg-teal-50/50 p-4 text-xs font-medium text-teal-800">
+                    <label className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-dashed border-teal-300 bg-teal-50/50 p-4 text-xs font-medium text-teal-800">
                       <Upload className="size-4" />
                       {busy ? "Uploading…" : "Upload for platform review"}
                       <input
-                        className="min-w-0 flex-1 text-[11px]"
+                        className="w-full min-w-0 text-[11px] sm:w-auto sm:flex-1"
                         aria-label="Upload document"
                         type="file"
                         accept=".pdf,.png,.jpg,.jpeg,.txt"
